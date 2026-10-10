@@ -93,6 +93,7 @@ spiral-review records which findings the coding agent accepts or rejects, per le
 
 - **No Claude subscription tokens.** Anthropic restricts subscription (OAuth) credentials to Claude Code and Claude.ai. spiral-review never uses them; it interacts with Claude Code only through its official hook mechanism. Reviewers run on whatever providers you configure in OpenCode.
 - **Reviewer quality varies.** Review output is a peer review the coding agent must verify, not orders.
+- **Your code goes to your providers.** Reviewers send the diff and any repository files they read to the model providers you configure (e.g. via OpenCode), so their data policies apply. Use local models if code must not leave your machine.
 
 ## Status
 
@@ -116,7 +117,7 @@ Pre-alpha, design phase. No code, no releases, nothing to install yet.
 
 - [Open Code Review](https://github.com/spencermarx/open-code-review): multi-agent, multi-model review with a consolidation phase.
 - [claude-review-loop](https://github.com/hamelsmu/claude-review-loop): the Claude Code Stop-hook review loop pattern.
-- [PR-Agent](https://github.com/qodo-ai/pr-agent) by Qodo: mature open-source PR review using API keys.
+- [PR-Agent](https://github.com/The-PR-Agent/pr-agent): mature open-source PR review using API keys.
 
 spiral-review's focus is the operating model (risk tiers, subscription-aware budgets, human digest, reviewer metrics), not the orchestration itself.
 
