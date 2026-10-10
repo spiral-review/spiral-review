@@ -49,4 +49,4 @@ Decisions are numbered so a later ADR can supersede one of them alone.
 - Code sent to reviewers (diff and files they read) is subject to those providers' data policies.
 - Structured output support and per-message token/cost reporting in the SDK are unverified; to be checked before designing budgets.
 - Stop hooks block the session while running; fan-out plus consolidation takes minutes and may exceed the hook timeout.
-- Open questions not covered here: risk tier thresholds, findings schema and blocking rule, accept/reject protocol, budget units, degradation order, digest format.
+- Open questions are tracked in [ROADMAP.md](../ROADMAP.md#open-questions).
