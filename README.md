@@ -122,4 +122,4 @@ spiral-review's focus is the operating model (risk tiers, subscription-aware bud
 
 ## License
 
-MIT. See [LICENSE](LICENSE) (to be added).
+[MIT](LICENSE)
