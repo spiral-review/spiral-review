@@ -20,6 +20,11 @@ Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 - **Tier scope:** the Stop hook reviews one turn's diff; a risky change split over small turns may stay "trivial". Compute the tier on the branch diff against its base?
 - **Gauntlet placement:** fan-out plus consolidation takes minutes and blocks the session. Run it in the Stop hook, or only in `review`/`pr`?
 - **Human approval:** the high-risk tier "requires explicit human approval" — before spending quota on the gauntlet, or before merge?
+- **PR flow:** findings from `pr` don't reach the coding agent. Proposal (also answers tier scope and gauntlet placement):
+  1. While coding: Stop hook, standard tier per turn; the agent fixes in session.
+  2. `spiral-review pr --create` as the go-to command: full tier on the branch diff vs base (gauntlet if high-risk), agent addresses findings, then `gh pr create`, digest comment and `needs-human` label.
+  3. `spiral-review pr` on an existing PR: posts the digest, reusing the cached result when the diff hash is unchanged (no extra quota).
+  - Open: how `--create` hands findings back to the agent (agent runs the command itself vs. human relays); one digest comment per PR, updated in place, or one per run.
 - **Findings schema and blocking rule** (severity × confidence).
 - **Accept/reject protocol:** how the coding agent reports per-finding accepted/rejected/fixed by finding ID. Reviewer metrics depend on it.
 - **Budget units:** subscriptions don't expose remaining quota; check whether the OpenCode SDK reports tokens or cost per message.
