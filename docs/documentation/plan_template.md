@@ -2,7 +2,7 @@
 
 ## Philosophy
 
-Plans describe **what** to build and **why**, with enough **how** to communicate architectural intent. They are *not* a pre-review of the code — the code review happens at PR time. Focus on strategic decisions, business logic, and maintainability concerns that a future reader (or your future self) would need to understand the intent behind the implementation.
+Plans describe **what** to build and **why**, with enough **how** to communicate architectural intent. They are _not_ a pre-review of the code — the code review happens at PR time. Focus on strategic decisions, business logic, and maintainability concerns that a future reader (or your future self) would need to understand the intent behind the implementation.
 
 ## Naming Convention
 
@@ -10,11 +10,11 @@ Plans follow the pattern `NNN_short-name.md`, where `NNN` is a zero-padded seque
 
 ## Sizing Guide
 
-| Change Size | Examples | Sections Needed |
-|-------------|----------|-----------------|
-| **Small** | Single file change, config update, simple bug fix | Minimum Viable Plan only |
-| **Medium** | New feature, API endpoint, database migration | Core + relevant optional sections |
-| **Large** | Multi-component feature, breaking changes, infrastructure | Full template |
+| Change Size | Examples                                                  | Sections Needed                   |
+| ----------- | --------------------------------------------------------- | --------------------------------- |
+| **Small**   | Single file change, config update, simple bug fix         | Minimum Viable Plan only          |
+| **Medium**  | New feature, API endpoint, database migration             | Core + relevant optional sections |
+| **Large**   | Multi-component feature, breaking changes, infrastructure | Full template                     |
 
 ### Minimum Viable Plan (Small Changes)
 
@@ -22,12 +22,15 @@ Plans follow the pattern `NNN_short-name.md`, where `NNN` is a zero-padded seque
 # [Feature ID]: [Title]
 
 ## Overview
+
 [What and why in 2-3 sentences]
 
 ## Approach
+
 [High-level description of the change and any non-obvious choices]
 
 ## Acceptance Criteria
+
 - [Specific, verifiable outcome]
 ```
 
@@ -52,10 +55,10 @@ Sections marked **[Required]** must always be included. Sections marked **[If Ap
 
 ## Prerequisites [If Applicable]
 
-| Prerequisite | Status | Notes |
-|--------------|--------|-------|
-| [e.g., ADR-XXX accepted] | Done | Architectural decision |
-| [e.g., Feature Y completed] | Done | Pattern to follow |
+| Prerequisite                | Status | Notes                  |
+| --------------------------- | ------ | ---------------------- |
+| [e.g., ADR-XXX accepted]    | Done   | Architectural decision |
+| [e.g., Feature Y completed] | Done   | Pattern to follow      |
 
 ## Breaking Changes [Required for API/contract changes]
 
@@ -68,10 +71,12 @@ Sections marked **[Required]** must always be included. Sections marked **[If Ap
 ## Scope [Required for Medium/Large]
 
 ### In Scope
+
 - [Specific deliverable 1]
 - [Specific deliverable 2]
 
 ### Out of Scope
+
 - [Excluded item — reason or future ticket reference]
 
 ## Technical Approach [Required for Medium/Large]
@@ -80,15 +85,15 @@ Sections marked **[Required]** must always be included. Sections marked **[If Ap
 
 ### Key Decisions [If Applicable]
 
-| Decision | Chosen Option | Rationale |
-|----------|---------------|-----------|
-| [Decision point] | [Choice] | [Why] |
+| Decision         | Chosen Option | Rationale |
+| ---------------- | ------------- | --------- |
+| [Decision point] | [Choice]      | [Why]     |
 
 ### Risks & Trade-offs [If Applicable]
 
-| Risk/Trade-off | Impact | Mitigation |
-|----------------|--------|------------|
-| [Risk] | Low/Medium/High | [How handled] |
+| Risk/Trade-off | Impact          | Mitigation    |
+| -------------- | --------------- | ------------- |
+| [Risk]         | Low/Medium/High | [How handled] |
 
 ## Implementation [Required]
 
@@ -96,20 +101,20 @@ Sections marked **[Required]** must always be included. Sections marked **[If Ap
 
 ### Files to Create [If Applicable]
 
-| File Path | Purpose |
-|-----------|---------|
+| File Path             | Purpose            |
+| --------------------- | ------------------ |
 | `src/path/NewFile.cs` | [One-line purpose] |
 
 ### Files to Modify [If Applicable]
 
-| File Path | Why |
-|-----------|-----|
+| File Path                  | Why               |
+| -------------------------- | ----------------- |
 | `src/path/ExistingFile.cs` | [One-line reason] |
 
 ### Files to Delete [If Applicable]
 
-| File Path | Reason |
-|-----------|--------|
+| File Path             | Reason            |
+| --------------------- | ----------------- |
 | `src/path/OldFile.cs` | [One-line reason] |
 
 ### API Changes [If Applicable]
@@ -133,7 +138,6 @@ Sections marked **[Required]** must always be included. Sections marked **[If Ap
 - [Specific, measurable outcome 1]
 - [Specific, measurable outcome 2]
 - All tests passing
-
 ```
 
 ---
@@ -162,15 +166,15 @@ Multiple amendments are appended chronologically.
 
 ## Conditional Sections Reference
 
-| Section | Include When |
-|---------|-------------|
-| References | PRDs, ADRs, or external resources are relevant |
-| Prerequisites | Dependencies on prior work exist |
-| Breaking Changes | Any API, contract, or schema changes |
-| Scope | Medium/large features needing boundaries |
-| Technical Approach | Non-obvious implementation decisions |
-| Key Decisions | Multiple valid approaches existed |
-| Risks & Trade-offs | Known concerns need documentation |
-| API Changes | New or modified endpoints/DTOs |
-| Database Changes | Schema or migration changes needed |
-| Configuration Changes | App settings or deployment config changes |
+| Section               | Include When                                   |
+| --------------------- | ---------------------------------------------- |
+| References            | PRDs, ADRs, or external resources are relevant |
+| Prerequisites         | Dependencies on prior work exist               |
+| Breaking Changes      | Any API, contract, or schema changes           |
+| Scope                 | Medium/large features needing boundaries       |
+| Technical Approach    | Non-obvious implementation decisions           |
+| Key Decisions         | Multiple valid approaches existed              |
+| Risks & Trade-offs    | Known concerns need documentation              |
+| API Changes           | New or modified endpoints/DTOs                 |
+| Database Changes      | Schema or migration changes needed             |
+| Configuration Changes | App settings or deployment config changes      |
