@@ -2,7 +2,7 @@
 
 | **Creation Date** | **Status** |
 | :---------------: | :--------: |
-|    2026-10-10     |  Proposed  |
+|    2026-10-10     |  Accepted  |
 
 ## Table of Contents
 
