@@ -10,11 +10,11 @@ PRDs follow the pattern `NNN_short-name.md`, where `NNN` is a zero-padded sequen
 
 ## Sizing Guide
 
-| Change Size | Examples | Sections Needed |
-|-------------|----------|-----------------|
-| **Small** | Minor entity, config flag, simple feature | Minimum Viable PRD only |
-| **Medium** | Full CRUD entity, new workflow | Core + relevant optional sections |
-| **Large** | Multi-entity feature, compliance-heavy | Full template |
+| Change Size | Examples                                  | Sections Needed                   |
+| ----------- | ----------------------------------------- | --------------------------------- |
+| **Small**   | Minor entity, config flag, simple feature | Minimum Viable PRD only           |
+| **Medium**  | Full CRUD entity, new workflow            | Core + relevant optional sections |
+| **Large**   | Multi-entity feature, compliance-heavy    | Full template                     |
 
 ### Minimum Viable PRD (Small Features)
 
@@ -26,18 +26,23 @@ PRDs follow the pattern `NNN_short-name.md`, where `NNN` is a zero-padded sequen
 **Author**: Product Lead
 
 ## Problem
+
 [What user problem are we solving and why now, in 2-3 sentences]
 
 ## Goals
+
 - [Goal 1]
 
 ## Non-Goals
+
 - [Excluded item]
 
 ## Data Model
+
 [Fields table or brief description]
 
 ## Acceptance Criteria
+
 - **AC1**: Given [context], when [action], then [outcome]
 ```
 
@@ -84,17 +89,17 @@ Use tables for enums/lookup values.]
 ## Data Model [Required]
 
 | Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `Id` | int | auto | PK |
-| ... | | | |
+| ----- | ---- | -------- | ----- |
+| `Id`  | int  | auto     | PK    |
+| ...   |      |          |       |
 
 [Include all fields referenced in validation rules and acceptance criteria.
 Cross-check: every field mentioned in business logic must appear here.]
 
 ## Validation Rules [Required]
 
-| Rule | Error Code |
-|------|-----------|
+| Rule                  | Error Code            |
+| --------------------- | --------------------- |
 | [Human-readable rule] | `ENTITY_FIELD_REASON` |
 
 [Use consistent error code format: `ENTITY_FIELD_REASON` (e.g., `CUSTOMER_NAME_REQUIRED`).]
@@ -106,13 +111,13 @@ Include at least one request body example for create/update endpoints.]
 
 `/api/app/v1/[resource]`
 
-| Method | Path | Notes |
-|--------|------|-------|
-| POST | /resource | 201 + Location |
-| GET | /resource/{id} | 200 or 404 |
-| PUT | /resource/{id} | 204 or 404 |
+| Method | Path           | Notes                   |
+| ------ | -------------- | ----------------------- |
+| POST   | /resource      | 201 + Location          |
+| GET    | /resource/{id} | 200 or 404              |
+| PUT    | /resource/{id} | 204 or 404              |
 | DELETE | /resource/{id} | Soft delete. 204 or 404 |
-| GET | /resource | List with filters |
+| GET    | /resource      | List with filters       |
 
 ## Seed Data [If Applicable]
 

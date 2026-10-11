@@ -43,12 +43,12 @@ flowchart LR
   - **Guard:** a pre-tool hook blocks `gh pr create` (and equivalents) and points the agent to `spiral-review pr --create`. Deterministic: works even if the agent ignores the procedure.
   - **Per-turn review:** the Stop hook (Claude Code) or `session.idle` plugin (OpenCode).
 
-  | | Claude Code | OpenCode |
-  |---|---|---|
-  | Packaging | one plugin (skill + hooks) | one plugin (+ command) |
-  | Ship procedure | skill `ship`, also `/ship` | custom command or `AGENTS.md` (skill support unverified) |
-  | Guard | `PreToolUse` hook | `tool.execute.before` |
-  | Per-turn review | `Stop` hook | `session.idle` event (spike) |
+  |                 | Claude Code                | OpenCode                                                 |
+  | --------------- | -------------------------- | -------------------------------------------------------- |
+  | Packaging       | one plugin (skill + hooks) | one plugin (+ command)                                   |
+  | Ship procedure  | skill `ship`, also `/ship` | custom command or `AGENTS.md` (skill support unverified) |
+  | Guard           | `PreToolUse` hook          | `tool.execute.before`                                    |
+  | Per-turn review | `Stop` hook                | `session.idle` event (spike)                             |
 
   The plugins only call the CLI; logic stays in the core (ADR-001 D7).
 
@@ -82,8 +82,6 @@ Not planned now; to be re-evaluated later.
 Follow-ups with a known trigger.
 
 - **TypeScript 7:** move from 6.0 once typescript-eslint supports it ([#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)).
-- **CI `paths-ignore`:** if the repo goes public and `check` becomes a required status check, remove it (docs-only PRs would wait forever for a skipped check).
-- **Prettier for Markdown:** currently ignored; format docs in a separate formatting-only PR if wanted.
 - **GitHub Action** wrapping the CLI (ADR-001 D5). Check OpenCode Go terms first.
 
 ## Open questions

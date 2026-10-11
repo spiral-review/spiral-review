@@ -41,11 +41,11 @@ Lint, type check and tests always run before any LLM review. They are free and m
 
 The tier is computed from the diff: size, sensitive paths (e.g. `migrations/`, `billing/`, `auth/`) and presence of tests.
 
-| Tier | LLM review | Rounds | Human approval |
-|---|---|---|---|
-| trivial | none | 0 | no |
-| standard | one reviewer | 1 | no |
-| high-risk ("gauntlet") | several lenses, optionally on different models, plus a consolidator | up to 2 | required |
+| Tier                   | LLM review                                                          | Rounds  | Human approval |
+| ---------------------- | ------------------------------------------------------------------- | ------- | -------------- |
+| trivial                | none                                                                | 0       | no             |
+| standard               | one reviewer                                                        | 1       | no             |
+| high-risk ("gauntlet") | several lenses, optionally on different models, plus a consolidator | up to 2 | required       |
 
 **Lenses** are reviewers with different focus prompts: logic; edge cases and failure paths; contracts and blast radius; security.
 The **consolidator** merges duplicates, verifies findings against the code, drops false positives and emits a final verdict.
@@ -83,13 +83,13 @@ spiral-review records which findings the coding agent accepts or rejects, per le
 
 ### Planned commands
 
-| Command | Purpose |
-|---|---|
-| `init` | Create config for a repo |
-| `review` | Review the current diff |
-| `hook` | Entry point for the Claude Code Stop hook |
-| `pr` | Review a GitHub PR and post the digest |
-| `stats` | Show accept/reject metrics per lens and model |
+| Command  | Purpose                                       |
+| -------- | --------------------------------------------- |
+| `init`   | Create config for a repo                      |
+| `review` | Review the current diff                       |
+| `hook`   | Entry point for the Claude Code Stop hook     |
+| `pr`     | Review a GitHub PR and post the digest        |
+| `stats`  | Show accept/reject metrics per lens and model |
 
 ## Constraints
 

@@ -24,16 +24,16 @@
 
 Different documentation types have different update strategies. The key principle: **point-in-time decisions should remain point-in-time artifacts; the code is the ultimate source of truth for current behavior.**
 
-| Document Type | Update Policy | Rationale |
-|---------------|---------------|-----------|
-| Product Strategy and Goals | **Living** | Define product strategy and goals |
-| Product Roadmap | **Living** | Define product tactical-level macro steps |
-| Product Requirement Definitions (PRDs) | **Immutable** after merge amend separately if needed | Define product requirements and features |
-| Implementation Plans | **Immutable** after approval; amend separately if needed | Preserves estimation basis and decision history |
-| ADRs | **Immutable**; supersede with new ADRs | Creates auditable decision trail |
-| README / Usage docs | **Living**; update with code | Must reflect current behavior |
-| API docs | **Living**; ideally auto-generated | Must match actual API surface |
-| Decision Log | **Living**; update when ADRs change or other important decisions are taken | Summary document, links to immutable documents |
+| Document Type                          | Update Policy                                                              | Rationale                                       |
+| -------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------- |
+| Product Strategy and Goals             | **Living**                                                                 | Define product strategy and goals               |
+| Product Roadmap                        | **Living**                                                                 | Define product tactical-level macro steps       |
+| Product Requirement Definitions (PRDs) | **Immutable** after merge amend separately if needed                       | Define product requirements and features        |
+| Implementation Plans                   | **Immutable** after approval; amend separately if needed                   | Preserves estimation basis and decision history |
+| ADRs                                   | **Immutable**; supersede with new ADRs                                     | Creates auditable decision trail                |
+| README / Usage docs                    | **Living**; update with code                                               | Must reflect current behavior                   |
+| API docs                               | **Living**; ideally auto-generated                                         | Must match actual API surface                   |
+| Decision Log                           | **Living**; update when ADRs change or other important decisions are taken | Summary document, links to immutable documents  |
 
 ### Why Immutable Planning Artifacts?
 
@@ -76,14 +76,13 @@ If requirements change after a plan is approved:
 
         -root
           --src
-          --docs <-- exclude from ci build trigger
+          --docs <-- CI runs on docs too (format check)
             --adr <-- Architecture Decision Records
             --prd <-- Product requirements
             --plans <-- Implementation plans
             --design <-- UX design artifacts
             --decisions.md <-- decision log document
           README.md
-
 
 ### Design documents
 
@@ -112,12 +111,12 @@ This immutability answers "why did we choose X?" even years later, including dec
 
 ##### Valid Status Values
 
-| Status | Meaning |
-|--------|---------|
-| Proposed | Under discussion, not yet accepted |
-| Accepted | Decision is in effect |
-| Deprecated | No longer relevant (e.g., feature removed) |
-| Superseded by ADR-XXX | Replaced by a newer decision |
+| Status                | Meaning                                    |
+| --------------------- | ------------------------------------------ |
+| Proposed              | Under discussion, not yet accepted         |
+| Accepted              | Decision is in effect                      |
+| Deprecated            | No longer relevant (e.g., feature removed) |
+| Superseded by ADR-XXX | Replaced by a newer decision               |
 
 ##### Superseding an ADR
 
