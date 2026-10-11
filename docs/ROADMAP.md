@@ -82,7 +82,6 @@ Not planned now; to be re-evaluated later.
 Follow-ups with a known trigger.
 
 - **TypeScript 7:** move from 6.0 once typescript-eslint supports it ([#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)).
-- **CI `paths-ignore`:** if the repo goes public and `check` becomes a required status check, remove it (docs-only PRs would wait forever for a skipped check).
 - **GitHub Action** wrapping the CLI (ADR-001 D5). Check OpenCode Go terms first.
 
 ## Open questions
