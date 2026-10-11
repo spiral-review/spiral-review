@@ -99,7 +99,7 @@ spiral-review records which findings the coding agent accepts or rejects, per le
 
 ## Status
 
-Pre-alpha, design phase. No code, no releases, nothing to install yet.
+Pre-alpha. Design and project scaffold done; no releases, nothing usable yet.
 
 ## Development
 
@@ -113,17 +113,7 @@ pnpm build   # emits dist/
 
 ## Roadmap
 
-- [ ] Design doc for the operating model
-- [ ] CLI skeleton and config layering
-- [ ] Deterministic gates
-- [ ] Risk tier classifier
-- [ ] OpenCode adapter with structured findings
-- [ ] `review` (standard tier, then gauntlet + consolidator)
-- [ ] Claude Code Stop hook with loop guards
-- [ ] `pr` with digest comment and `needs-human` label
-- [ ] Global budget ledger and graceful degradation
-- [ ] `stats` and reviewer metrics
-- [ ] GitHub Action (maybe)
+See [docs/ROADMAP.md](docs/ROADMAP.md): developer-experience north star, planned work, open questions.
 
 ## Prior art
 
