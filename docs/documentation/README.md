@@ -76,7 +76,7 @@ If requirements change after a plan is approved:
 
         -root
           --src
-          --docs <-- exclude from ci build trigger
+          --docs <-- CI runs on docs too (format check)
             --adr <-- Architecture Decision Records
             --prd <-- Product requirements
             --plans <-- Implementation plans
