@@ -21,7 +21,7 @@ flowchart LR
 2. **Code.** You only talk to the agent. After each turn the integration runs gates and, if the change is not trivial, a standard review of the uncommitted changes. Blocking findings go to the agent, which fixes or rejects them with reasons. You see one status line, nothing more.
 3. **Ship.** You tell the agent to ship (or type `/ship`); the installed ship procedure makes it run `spiral-review pr --create`. That reviews the whole branch against its base at the tier of the branch diff (gauntlet if high-risk).
    - Blocking findings: no PR is opened; the command prints them, saves them to `.spiral-review/`, exits non-zero. The agent fixes and reruns.
-   - Clear, or round cap reached: pushes the branch, opens the PR, posts the digest, adds `needs-human` when high-risk or when human decisions are listed. Unresolved findings are listed in the digest, never hidden.
+   - Clear, or round cap reached: pushes the branch, opens the PR, posts the digest, adds `needs-human` when high-risk, when human decisions are listed, or when findings are unresolved (R10). Unresolved findings are listed in the digest, never hidden.
 4. **Decide.** You read one screen on the PR: what changed, tier, open findings, rejected findings with reasons, changes needing your decision. You merge or ask the agent for changes.
 5. **Iterate.** New pushes: `spiral-review pr` updates the same digest comment, reusing cached results when the diff is unchanged.
 
@@ -36,7 +36,7 @@ flowchart LR
 - **R7 - Never fail closed:** reviewer errors, timeouts and budget degradation are reported in one line and in the digest; work is never blocked by spiral-review failing.
 - **R8 - No double spend:** results are cached by diff hash; re-running on an unchanged diff costs no quota.
 - **R9 - One digest per PR,** updated in place.
-- **R10 - Human approval means the merge:** high-risk changes are reviewed within budget without asking first; the `needs-human` label marks the merge decision as yours.
+- **R10 - Humans own every merge:** high-risk changes get the full review within budget without asking first. `needs-human` is added when the PR is high-risk, lists changes needing a human decision, or has unresolved findings (R6). It means "read the digest carefully", not "only these need a human". No auto-merge (see [Out of scope](#out-of-scope)).
 - **R11 - Same flow on every coding agent** (Claude Code, OpenCode).
 - **R12 - Agent behavior is installed, not instructed:** the user never writes prompts or rules to make the agent follow this flow. `init` installs, per coding agent:
   - **Ship procedure:** run `spiral-review pr --create`; on non-zero exit, read the findings, fix or reject each with a reason, rerun; when the PR opens, report link and tier.
@@ -63,6 +63,12 @@ From [ADR-001](adr/ADR-001_general-design.md), in order; each item is a small PR
 - [ ] **OpenCode plugin adapter** (D3, D4): spike first — verify a plugin can send findings into the active session on `session.idle`.
 - [ ] **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, result cache. Needs digest format and risk tiers.
 - [ ] **Single binary** (D1, optional): `bun build --compile`.
+
+## Out of scope
+
+Not planned now; to be re-evaluated later.
+
+- **Auto-merge** (e.g. trivial PRs via GitHub auto-merge). Conflicts with "the human keeps the decisions". Re-evaluate once reviewer metrics show low-risk reviews are reliable and the risk classifier is proven; opt-in only.
 
 ## Open questions
 
