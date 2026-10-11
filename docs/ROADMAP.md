@@ -56,7 +56,7 @@ flowchart LR
 
 From [ADR-001](adr/ADR-001_general-design.md), in order; each item is a small PR.
 
-- [ ] **Scaffold** (D1, D7): strict TypeScript, npm package `spiral-review` exporting a programmatic API, thin CLI with stubs for `init`, `review`, `hook`, `pr`, `stats`; lint, tests and CI for this repo.
+- [x] **Scaffold** (D1, D7): strict TypeScript, npm package `spiral-review` exporting a programmatic API, thin CLI with stubs for `init`, `review`, `hook`, `pr`, `stats`; lint, tests and CI for this repo.
 - [ ] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode via `@opencode-ai/sdk`, read-only (edit, bash, webfetch denied), findings as JSON-Schema-validated output. Record what the SDK reports per message (tokens, cost).
 - [ ] **Configuration** (D6): defaults < `~/.config/spiral-review` < `.spiral-review.toml`; per-repo lens prompt overrides.
 - [ ] **Claude Code Stop hook** (D3, D4): thin adapter over the core; `hook` reviews uncommitted diff incl. untracked files; returns `{"decision":"block","reason":...}`; diff-hash guard, round cap, fail-open, verify-don't-obey instructions. Needs the findings schema and blocking rule.

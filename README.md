@@ -101,6 +101,16 @@ spiral-review records which findings the coding agent accepts or rejects, per le
 
 Pre-alpha, design phase. No code, no releases, nothing to install yet.
 
+## Development
+
+Requires [pnpm](https://pnpm.io); it installs the pinned Node.js version itself.
+
+```sh
+pnpm install
+pnpm check   # typecheck, lint, format check, tests
+pnpm build   # emits dist/
+```
+
 ## Roadmap
 
 - [ ] Design doc for the operating model
