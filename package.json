@@ -1,0 +1,62 @@
+{
+  "name": "spiral-review",
+  "version": "0.0.0",
+  "description": "Risk-tiered, budget-aware, multi-model code review around your coding agent",
+  "dependencies": {
+    "@commander-js/extra-typings": "^15.0.0",
+    "commander": "^15.0.0",
+    "smol-toml": "^1.9.1",
+    "zod": "^4.6.5"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "prepublishOnly": "pnpm check && pnpm build"
+  },
+  "keywords": [
+    "code-review",
+    "ai",
+    "claude-code",
+    "opencode",
+    "cli"
+  ],
+  "author": "Luca Dalla Valle",
+  "license": "MIT",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.11.2",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.11.2",
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
+  },
+  "repository": "github:spiral-review/spiral-review",
+  "bin": {
+    "spiral-review": "./dist/bin.js"
+  },
+  "exports": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  }
+}
