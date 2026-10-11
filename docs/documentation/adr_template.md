@@ -10,7 +10,7 @@
 2. [Decision](#decision)
 3. [Alternatives considered](#alternatives)
 4. [Consequences and Risks](#consequences)
-5. [Supersedes](#supersedes) *(if applicable)*
+5. [Supersedes](#supersedes) _(if applicable)_
 
 <a id="context"></a>
 
@@ -38,9 +38,9 @@ See Michael Nygard's article, linked above. For a lightweight ADR tool set, see 
 
 <a id="supersedes"></a>
 
-## Supersedes *(if applicable)*
+## Supersedes _(if applicable)_
 
-*Include this section only when this ADR replaces a previous decision.*
+_Include this section only when this ADR replaces a previous decision._
 
 This ADR supersedes [ADR-XXX: Previous Title](./ADR-XXX_previous-title.md).
 

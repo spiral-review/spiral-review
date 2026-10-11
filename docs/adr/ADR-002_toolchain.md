@@ -17,18 +17,18 @@
 
 [ADR-001](ADR-001_general-design.md) sets TypeScript (strict) and npm distribution but no libraries. Choices are based on what widely used TypeScript/JS CLIs ship today (surveyed 2026-10-10 from their `package.json`; a sample, not a census):
 
-| Concern | Library | Used by |
-|---|---|---|
-| Arg parsing | yargs | Gemini CLI, Wrangler, Angular CLI, Nx, AWS CDK, Jest |
-| | commander | Firebase CLI, Netlify CLI, shadcn, drizzle-kit, Open Code Review, Heroku |
-| | cac / arg | Vite, Vitest, Changesets / Vercel CLI, Expo |
-| | oclif | Shopify CLI, Heroku |
-| Schema | zod | Gemini CLI, Wrangler, Firebase, Vercel, Angular, Shopify, Astro, Expo, shadcn, drizzle-kit, OpenCode core |
-| TOML | smol-toml | Wrangler, Vercel, Nx, Astro, Prettier |
-| | @iarna/toml | Gemini CLI, Shopify CLI |
-| Tests | vitest | Gemini CLI, Wrangler, Netlify, Vercel, Shopify, Astro, Supabase, drizzle-kit, Open Code Review |
-| | jest | AWS CDK, Prettier |
-| Lint/format | eslint + prettier | most of the above; none surveyed uses biome |
+| Concern     | Library           | Used by                                                                                                   |
+| ----------- | ----------------- | --------------------------------------------------------------------------------------------------------- |
+| Arg parsing | yargs             | Gemini CLI, Wrangler, Angular CLI, Nx, AWS CDK, Jest                                                      |
+|             | commander         | Firebase CLI, Netlify CLI, shadcn, drizzle-kit, Open Code Review, Heroku                                  |
+|             | cac / arg         | Vite, Vitest, Changesets / Vercel CLI, Expo                                                               |
+|             | oclif             | Shopify CLI, Heroku                                                                                       |
+| Schema      | zod               | Gemini CLI, Wrangler, Firebase, Vercel, Angular, Shopify, Astro, Expo, shadcn, drizzle-kit, OpenCode core |
+| TOML        | smol-toml         | Wrangler, Vercel, Nx, Astro, Prettier                                                                     |
+|             | @iarna/toml       | Gemini CLI, Shopify CLI                                                                                   |
+| Tests       | vitest            | Gemini CLI, Wrangler, Netlify, Vercel, Shopify, Astro, Supabase, drizzle-kit, Open Code Review            |
+|             | jest              | AWS CDK, Prettier                                                                                         |
+| Lint/format | eslint + prettier | most of the above; none surveyed uses biome                                                               |
 
 <a id="decision"></a>
 

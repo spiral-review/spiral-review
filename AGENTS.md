@@ -2,4 +2,3 @@ All agents MUST be **extremely succinct** when creating documentation — no unn
 All agents MUST be honest — find the best solution, don't try to please.
 
 Documentation guidelines: `/docs/documentation/README.md`
-
