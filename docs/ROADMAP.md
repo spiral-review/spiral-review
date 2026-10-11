@@ -54,14 +54,21 @@ flowchart LR
 
 ## Planned work
 
-From [ADR-001](adr/ADR-001_general-design.md), in order; each item is a small PR.
+In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_general-design.md). "Needs" lists open questions to decide first.
 
 - [x] **Scaffold** (D1, D7): strict TypeScript, npm package `spiral-review` exporting a programmatic API, thin CLI with stubs for `init`, `review`, `hook`, `pr`, `stats`; lint, tests and CI for this repo.
 - [ ] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode via `@opencode-ai/sdk`, read-only (edit, bash, webfetch denied), findings as JSON-Schema-validated output. Record what the SDK reports per message (tokens, cost).
 - [ ] **Configuration** (D6): defaults < `~/.config/spiral-review` < `.spiral-review.toml`; per-repo lens prompt overrides.
+- [ ] **Deterministic gates:** run the repo's lint, type check and tests before any LLM review; commands come from config.
+- [ ] **Risk tier classifier:** trivial / standard / high-risk from the diff. Needs: risk tier thresholds.
+- [ ] **`review`, standard tier:** one reviewer, one round, findings and verdict from the core. Needs: findings schema and blocking rule; large diffs.
+- [ ] **Gauntlet and consolidator:** lens fan-out, optionally on different models; consolidator merges, verifies, drops false positives. Needs: findings schema.
 - [ ] **Claude Code Stop hook** (D3, D4): thin adapter over the core; `hook` reviews uncommitted diff incl. untracked files; returns `{"decision":"block","reason":...}`; diff-hash guard, round cap, fail-open, verify-don't-obey instructions. Needs the findings schema and blocking rule.
+- [ ] **`init`** (north star 1, R12): checks prerequisites (OpenCode, `gh`, auth, `spiral-review` on `PATH`), installs the coding-agent plugin (ship procedure, `gh pr create` guard, per-turn review). Needs: hook invocation.
 - [ ] **OpenCode plugin adapter** (D3, D4): spike first — verify a plugin can send findings into the active session on `session.idle`.
 - [ ] **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, result cache. Needs digest format and risk tiers.
+- [ ] **Budget ledger and degradation:** per-reviewer, per-task and global budgets; degrade instead of skipping. Needs: budget units, ledger concurrency, degradation order, shared quota.
+- [ ] **`stats` and reviewer metrics:** accept/reject rates per lens and model. Needs: accept/reject protocol.
 - [ ] **Single binary** (D1, optional): `bun build --compile`.
 
 ## Out of scope
@@ -70,11 +77,22 @@ Not planned now; to be re-evaluated later.
 
 - **Auto-merge** (e.g. trivial PRs via GitHub auto-merge). Conflicts with "the human keeps the decisions". Re-evaluate once reviewer metrics show low-risk reviews are reliable and the risk classifier is proven; opt-in only.
 
+## Later
+
+Follow-ups with a known trigger.
+
+- **TypeScript 7:** move from 6.0 once typescript-eslint supports it ([#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)).
+- **CI `paths-ignore`:** if the repo goes public and `check` becomes a required status check, remove it (docs-only PRs would wait forever for a skipped check).
+- **Prettier for Markdown:** currently ignored; format docs in a separate formatting-only PR if wanted.
+- **GitHub Action** wrapping the CLI (ADR-001 D5). Check OpenCode Go terms first.
+
 ## Open questions
 
 Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 
 - **Risk tier thresholds:** diff size, sensitive paths, how tests weigh.
+- **Hook invocation:** how the installed integration calls spiral-review. `npx`/`pnpm dlx` hit the registry on every turn and `npx` is missing when Node is installed by pnpm (v11+). Leaning: global install (`spiral-review` on `PATH`), checked by `init`.
+- **Large diffs:** what to send when a diff exceeds the reviewer's practical size (the prototype truncates at `REVIEW_MAX_BYTES`): truncate and say so, split by file, or escalate to the human.
 - **Findings schema and blocking rule** (severity × confidence).
 - **Accept/reject protocol:** how the coding agent reports per-finding accepted/rejected/fixed by finding ID. Reviewer metrics depend on it.
 - **Budget units:** subscriptions don't expose remaining quota; check whether the OpenCode SDK reports tokens or cost per message.
