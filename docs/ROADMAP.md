@@ -57,7 +57,7 @@ flowchart LR
 In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_general-design.md). "Needs" lists open questions to decide first.
 
 - [x] **Scaffold** (D1, D7): strict TypeScript, npm package `spiral-review` exporting a programmatic API, thin CLI with stubs for `init`, `review`, `hook`, `pr`, `stats`; lint, tests and CI for this repo.
-- [ ] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode via `@opencode-ai/sdk`, read-only (edit, bash, webfetch denied), findings as JSON-Schema-validated output. Record what the SDK reports per message (tokens, cost).
+- [x] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode 2.x via its HTTP API, read-only (only `read` and `glob`, `.env` denied), findings as zod-validated JSON ([plan 001](plans/001_opencode-adapter.md)).
 - [ ] **Configuration** (D6): defaults < `~/.config/spiral-review` < `.spiral-review.toml`; per-repo lens prompt overrides.
 - [ ] **Deterministic gates:** run the repo's lint, type check and tests before any LLM review; commands come from config.
 - [ ] **Risk tier classifier:** trivial / standard / high-risk from the diff. Needs: risk tier thresholds.
@@ -93,7 +93,7 @@ Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 - **Large diffs:** what to send when a diff exceeds the reviewer's practical size (the prototype truncates at `REVIEW_MAX_BYTES`): truncate and say so, split by file, or escalate to the human.
 - **Findings schema and blocking rule** (severity × confidence).
 - **Accept/reject protocol:** how the coding agent reports per-finding accepted/rejected/fixed by finding ID. Reviewer metrics depend on it.
-- **Budget units:** subscriptions don't expose remaining quota; check whether the OpenCode SDK reports tokens or cost per message.
+- **Budget units:** subscriptions don't expose remaining quota. OpenCode 2.x reports per message, and as session totals, tokens (input, output, reasoning, cache read/write) and `cost` in USD. `cost` is OpenCode's estimate from its price catalog, not the provider's, and is 0 for free models ([plan 001](plans/001_opencode-adapter.md)). Not yet compared with the Zen/Go console.
 - **Ledger concurrency:** sessions in different repos may write the global ledger at the same time (file lock, SQLite?).
 - **Degradation order** when a budget is exhausted.
 - **Digest format.**
