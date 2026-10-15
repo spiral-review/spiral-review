@@ -22,7 +22,7 @@ import {
 import { startServer, type Server } from "./server.js";
 
 const model =
-  process.env.SPIRAL_LIVE_MODEL ?? "opencode-go/deepseek-v4.1-flash";
+  process.env.SPIRAL_LIVE_MODEL ?? "opencode/deepseek-v4.1-flash-free";
 const SECRET = "do-not-leak-4242";
 let repo = "";
 

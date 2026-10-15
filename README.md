@@ -111,7 +111,7 @@ pnpm check   # typecheck, lint, format check, tests
 pnpm build   # emits dist/
 ```
 
-Live reviewer test (needs `opencode` 2.x logged in; spends quota): `SPIRAL_LIVE=1 SPIRAL_LIVE_MODEL=provider/model pnpm test`.
+Live reviewer test (needs `opencode` 2.x logged in): `SPIRAL_LIVE=1 pnpm test`. It defaults to a free model, which reports `cost` 0; to check cost, set a paid one, e.g. `SPIRAL_LIVE_MODEL=opencode-go/deepseek-v4.1-flash`.
 
 ## Roadmap
 

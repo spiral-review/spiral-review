@@ -137,7 +137,7 @@ Facts that shape the design (S = from source v2.0.26, L = verified live on 2.0.2
 ## Testing Strategy
 
 - Offline (fake port): server config (step cap, plugins), permission rules, JSON Schema and diff sent, valid output, retry on invalid then valid output (retry without the diff), exhausted retries, no retry on provider error, error-kind mapping, usage summed over steps and attempts, timeout and abort (interrupt, delete), agent readiness polling, one server start under concurrent reviews, version check, model id check.
-- Live (`SPIRAL_LIVE=1`, `SPIRAL_LIVE_MODEL`, real `opencode`): review a fixture diff that needs a file read. Check, from the raw messages, that edit/write/shell/web/grep are unavailable or refused, that `.env` content never appears, and that nothing is written.
+- Live (`SPIRAL_LIVE=1`, real `opencode`; free model by default, `SPIRAL_LIVE_MODEL` for a paid one): review a fixture diff that needs a file read. Check, from the raw messages, that edit/write/shell/web/grep are unavailable or refused, that `.env` content never appears, and that nothing is written.
 
 ## Acceptance Criteria
 
