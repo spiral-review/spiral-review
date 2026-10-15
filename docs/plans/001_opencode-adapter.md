@@ -49,34 +49,47 @@ Facts from the source that shape the design:
 - Structured output (`format: json_schema`) exists only in the SDK's `/v2` entry point.
 - The server does **not** validate the `StructuredOutput` tool input against the schema, and does **not** use `retryCount`.
 - Per message the SDK returns `tokens` (input, output, reasoning, cache read/write) and `cost`. `cost` is computed by OpenCode from its model price catalog, not reported by the provider.
-- Permissions default to `ask`, which would hang a headless server; rules are last-match-wins.
+- Permissions default to `ask`, which would hang a headless server; rules are last-match-wins. Defaults set `*.env` and `*.env.*` reads to `ask`.
+- Tools whose last matching rule is a deny on `*` are removed before the model call, the injected `StructuredOutput` tool included.
+- Each loop step creates a new assistant message; `prompt()` returns only the last one.
+- `OPENCODE_PURE=1` disables external plugins in the server; built-in plugins still load.
 - The SDK starts `opencode serve` on port 4096 by default; `serve` accepts port 0.
 - `OPENCODE_CONFIG_CONTENT` is merged after the repo's `opencode.json`.
 
 ### Key Decisions
 
-| Decision           | Chosen Option                                                         | Rationale                                                              |
-| ------------------ | --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Output typing      | Generic over a zod schema (`ReviewRequest<T>`)                        | Findings schema is undecided; the consolidator needs a different shape |
-| Model identifier   | Opaque string interpreted by the adapter                              | `provider/model` is OpenCode's naming; other runners differ            |
-| Validation/retries | Client-side zod validation; re-prompt same session with the error     | Server does neither                                                    |
-| Read-only          | Dedicated agent: `"*": deny`, allow only read, grep, glob, list       | Deny by default; nothing can fall back to `ask`                        |
-| Server             | Started lazily on port 0, reused across reviews, stopped by `close()` | Parallel reviewers must not clash; avoid one startup per review        |
-| SDK version        | Pinned exactly                                                        | The v2 API is coupled to the server version                            |
-| Errors             | `ReviewerError` with a `kind` and usage so far                        | Core can fail open (R7) and still count spend                          |
+| Decision           | Chosen Option                                                                                                                                                  | Rationale                                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Output typing      | Generic over a zod schema (`ReviewRequest<T>`)                                                                                                                 | Findings schema is undecided; the consolidator needs a different shape                                                         |
+| Model identifier   | Opaque string interpreted by the adapter                                                                                                                       | `provider/model` is OpenCode's naming; other runners differ                                                                    |
+| Validation/retries | Client-side zod validation; retry only on missing or invalid output, in a new session with the previous output and the validation error (no diff)              | Server does neither; provider errors would fail again; resending the diff is costly                                            |
+| Read-only          | Top-level `permission` (applies to every agent): `"*": deny`; allow read, grep, glob, list, `StructuredOutput`; deny `*.env`, `*.env.*`; allow `*.env.example` | Deny by default, nothing falls back to `ask`; holds even if a prompt runs on `build`; keeps `StructuredOutput` and secrets out |
+| Step cap           | Reviewer agent `steps` from `maxSteps`                                                                                                                         | Per-reviewer budget (README Budgets); default is unlimited                                                                     |
+| Plugins            | Server started with `OPENCODE_PURE=1`                                                                                                                          | Prevents review recursion via our own OpenCode plugin and plugin hooks around permissions                                      |
+| Server             | Started lazily on port 0 (one shared start promise), reused across reviews, stopped by `close()` and on process exit/signals                                   | Parallel reviewers must not clash or race; a killed hook must not leak servers                                                 |
+| Sessions           | Deleted after each review, on success and on error                                                                                                             | Keep reviewer sessions (with the diff) out of the user's OpenCode history                                                      |
+| SDK version        | Pinned exactly                                                                                                                                                 | The v2 API is coupled to the server version                                                                                    |
+| Errors             | `ReviewerError` with a `kind` and usage so far                                                                                                                 | Core can fail open (R7) and still count spend                                                                                  |
 
 ### Risks & Trade-offs
 
 | Risk/Trade-off                                               | Impact | Mitigation                                                          |
 | ------------------------------------------------------------ | ------ | ------------------------------------------------------------------- |
 | Installed `opencode` version differs from the pinned SDK     | Medium | Live test records the server version; version check later in `init` |
-| User plugins/MCP servers still load in the reviewer's server | Low    | MCP tools are denied by `"*"`; documented                           |
+| `OPENCODE_PURE` also drops third-party provider-auth plugins | Medium | Documented; revisit if users need them                              |
+| User MCP servers still start in the reviewer's server        | Low    | MCP tools are denied by `"*"`                                       |
 | `cost` is an estimate; Go limits are in dollars at Go prices | Medium | Live test compares `cost` with the Go console                       |
-| Retries spend quota                                          | Low    | `maxAttempts` default 2; usage summed across attempts               |
+| Retries spend quota                                          | Medium | `maxAttempts` default 2; retries without the diff; usage counted    |
 
 ## Implementation
 
-`review()`: create a session in `cwd` with the reviewer agent, send instructions plus the diff as one text part with the zod schema as JSON Schema, validate `structured` with zod, and on a missing or invalid result re-prompt the same session with the validation error, up to `maxAttempts`. Timeout and abort call `session.abort` and raise `ReviewerError`. Usage sums tokens, cost and steps over all attempts.
+`review()`: create a session in `cwd` with the reviewer agent, send instructions plus the diff as one text part with the zod schema as JSON Schema, and validate `structured` with zod.
+
+- Assistant message has `error`: raise `ReviewerError` with the mapped kind, no retry.
+- Output missing or invalid: retry in a new session with the previous output (text or JSON) and the validation error, up to `maxAttempts`.
+- Timeout and abort call `session.abort` and raise `ReviewerError`.
+- Usage sums tokens, cost and steps over all assistant messages of all attempts' sessions.
+- Sessions are deleted in a `finally`.
 
 ### Files to Create
 
@@ -99,8 +112,8 @@ Facts from the source that shape the design:
 
 ## Testing Strategy
 
-- Offline (fake client behind a narrow internal port): agent permission config, JSON Schema sent, valid output, retry on invalid then valid output, exhausted retries, usage summed across attempts, error-kind mapping, timeout/abort.
-- Live (`SPIRAL_LIVE=1`, real `opencode`): review a small fixture diff, log the raw assistant message (tokens, cost, structured, error), check that a denied tool is refused, compare `cost` with the provider console.
+- Offline (fake client behind a narrow internal port): permission config, JSON Schema sent, valid output, retry on invalid then valid output (retry without the diff), no retry on provider error, exhausted retries, usage summed over multi-step sessions and attempts, error-kind mapping, timeout/abort, session deleted on success and error, single server start under concurrent reviews.
+- Live (`SPIRAL_LIVE=1`, real `opencode`): review a small fixture diff that needs a file read, log the raw assistant messages (tokens, cost, structured, error), check that edit/bash/webfetch and `.env` reads are refused and that `StructuredOutput` is available, compare `cost` with the provider console.
 
 ## Acceptance Criteria
 
