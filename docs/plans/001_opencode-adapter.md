@@ -15,11 +15,11 @@ Spike for the roadmap item "OpenCode adapter": a reviewer adapter interface in t
 
 ## Prerequisites
 
-| Prerequisite                            | Status | Notes                                                                                    |
-| --------------------------------------- | ------ | ---------------------------------------------------------------------------------------- |
-| Scaffold                                | Done   | strict TS, vitest, CI                                                                    |
-| `opencode` 2.x installed and logged in  | Done   | 2.0.26 (Arch package)                                                                    |
-| Credit or quota for the live-test model | Open   | `opencode/mistral-large-4` is Zen pay-as-you-go: "Insufficient account funds" (HTTP 402) |
+| Prerequisite                            | Status | Notes                                                                                                  |
+| --------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
+| Scaffold                                | Done   | strict TS, vitest, CI                                                                                  |
+| `opencode` 2.x installed and logged in  | Done   | 2.0.26 (Arch package)                                                                                  |
+| Credit or quota for the live-test model | Open   | `opencode-go/deepseek-v4.1-flash` needs Global regions in the Go workspace Privacy settings (HTTP 400) |
 
 ## Breaking Changes
 

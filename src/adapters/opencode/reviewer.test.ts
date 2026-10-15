@@ -114,7 +114,7 @@ const request = {
   diff: "diff --git a/x.ts b/x.ts\n+DIFF_MARKER",
   instructions: "Find bugs.",
   schema,
-  model: "opencode/mistral-large-4",
+  model: "opencode-go/deepseek-v4.1-flash",
   cwd: "/repo",
 };
 
@@ -150,7 +150,7 @@ describe("opencode reviewer", () => {
     expect(f.created[0]).toEqual({
       title: "spiral-review",
       agent: AGENT,
-      model: { providerID: "opencode", id: "mistral-large-4" },
+      model: { providerID: "opencode-go", id: "deepseek-v4.1-flash" },
       directory: "/repo",
       permissions: PERMISSIONS,
     });
@@ -326,7 +326,7 @@ describe("opencode reviewer", () => {
     await expect(
       createOpencodeReviewer({}, f.connect).review({
         ...request,
-        model: "mistral",
+        model: "deepseek",
       }),
     ).rejects.toMatchObject({ kind: "runner" });
   });
