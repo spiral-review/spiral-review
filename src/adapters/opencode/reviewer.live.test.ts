@@ -21,7 +21,8 @@ import {
 } from "./reviewer.js";
 import { startServer, type Server } from "./server.js";
 
-const model = process.env.SPIRAL_LIVE_MODEL ?? "opencode-go/deepseek-v4.1-flash";
+const model =
+  process.env.SPIRAL_LIVE_MODEL ?? "opencode-go/deepseek-v4.1-flash";
 const SECRET = "do-not-leak-4242";
 let repo = "";
 
