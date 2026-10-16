@@ -1,3 +1,5 @@
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ReviewerError } from "../../core/reviewer.js";
@@ -15,6 +17,7 @@ import {
   PERMISSIONS,
   serverConfig,
   type Connect,
+  type ExtraRules,
 } from "./reviewer.js";
 
 const schema = z.object({
@@ -97,10 +100,19 @@ function fake(turns: Turn[], version = "2.0.26", loadingPolls = 0) {
       return Promise.resolve();
     },
   };
+  let exit: () => void = () => undefined;
+  const exited = new Promise<void>((resolve) => {
+    exit = resolve;
+  });
   const close = vi.fn(() => Promise.resolve());
-  const connect = vi.fn<Connect>(() => Promise.resolve({ api, close }));
+  const connect = vi.fn<Connect>(() => Promise.resolve({ api, exited, close }));
+  const rules = vi.fn<ExtraRules>(() => Promise.resolve([linkRule]));
   return {
     connect,
+    rules,
+    exit: () => {
+      exit();
+    },
     close,
     created,
     prompts,
@@ -110,12 +122,19 @@ function fake(turns: Turn[], version = "2.0.26", loadingPolls = 0) {
   };
 }
 
+const linkRule = {
+  action: "read",
+  resource: "link",
+  effect: "deny",
+} as const;
+const cwd = realpathSync(tmpdir());
+
 const request = {
   diff: "diff --git a/x.ts b/x.ts\n+DIFF_MARKER",
   instructions: "Find bugs.",
   schema,
   model: "opencode-go/deepseek-v4.1-flash",
-  cwd: "/repo",
+  cwd,
 };
 
 describe("opencode reviewer", () => {
@@ -127,7 +146,11 @@ describe("opencode reviewer", () => {
         cost: 0.5,
       },
     ]);
-    const reviewer = createOpencodeReviewer({ maxSteps: 7 }, f.connect);
+    const reviewer = createOpencodeReviewer(
+      { maxSteps: 7 },
+      f.connect,
+      f.rules,
+    );
 
     const result = await reviewer.review(request);
 
@@ -146,13 +169,18 @@ describe("opencode reviewer", () => {
       steps: 2,
       attempts: 1,
     });
-    expect(f.connect).toHaveBeenCalledWith(serverConfig(7), 30_000);
+    expect(f.connect).toHaveBeenCalledWith(
+      serverConfig(7),
+      30_000,
+      expect.any(AbortSignal),
+    );
+    expect(f.rules).toHaveBeenCalledWith(cwd);
     expect(f.created[0]).toEqual({
       title: "spiral-review",
       agent: AGENT,
       model: { providerID: "opencode-go", id: "deepseek-v4.1-flash" },
-      directory: "/repo",
-      permissions: PERMISSIONS,
+      directory: cwd,
+      permissions: [...PERMISSIONS, linkRule],
     });
     expect(f.prompts[0]).toContain("DIFF_MARKER");
     expect(f.prompts[0]).toContain(JSON.stringify(z.toJSONSchema(schema)));
@@ -193,25 +221,37 @@ describe("opencode reviewer", () => {
     }
   });
 
-  it("retries invalid output in a new session without the diff", async () => {
+  it("reformats schema-invalid JSON in a new session without the diff", async () => {
     const f = fake([
-      { messages: [assistant("looks fine to me")], tokens: 1, cost: 0.1 },
+      { messages: [assistant('{"findings":"none"}')], tokens: 1, cost: 0.1 },
       {
         messages: [assistant("```json\n" + valid + "\n```")],
         tokens: 2,
         cost: 0.2,
       },
     ]);
-    const result = await createOpencodeReviewer({}, f.connect).review(request);
+    const result = await createOpencodeReviewer({}, f.connect, f.rules).review(
+      request,
+    );
 
     expect(result.output.findings).toHaveLength(1);
     expect(result.usage.attempts).toBe(2);
     expect(result.usage.steps).toBe(2);
     expect(result.usage.cost).toBeCloseTo(0.3);
     expect(f.prompts[1]).not.toContain("DIFF_MARKER");
-    expect(f.prompts[1]).toContain("looks fine to me");
-    expect(f.prompts[1]).toContain("no JSON object");
+    expect(f.prompts[1]).toContain('{"findings":"none"}');
     expect(f.deleted).toEqual(["ses_1", "ses_2"]);
+  });
+
+  it("reruns the full review when the answer has no JSON", async () => {
+    const f = fake([
+      { messages: [assistant("I could not finish { reading } the files")] },
+      { messages: [assistant(valid)] },
+    ]);
+    await createOpencodeReviewer({}, f.connect, f.rules).review(request);
+
+    expect(f.prompts[1]).toBe(f.prompts[0]);
+    expect(f.prompts[1]).toContain("DIFF_MARKER");
   });
 
   it("fails with invalid-output after maxAttempts", async () => {
@@ -219,7 +259,11 @@ describe("opencode reviewer", () => {
       { messages: [assistant('{"findings":"none"}')], tokens: 1 },
       { messages: [assistant("{}")], tokens: 1 },
     ]);
-    const error = await createOpencodeReviewer({ maxAttempts: 2 }, f.connect)
+    const error = await createOpencodeReviewer(
+      { maxAttempts: 2 },
+      f.connect,
+      f.rules,
+    )
       .review(request)
       .catch((e: unknown) => e);
 
@@ -242,7 +286,7 @@ describe("opencode reviewer", () => {
         tokens: 3,
       },
     ]);
-    const error = await createOpencodeReviewer({}, f.connect)
+    const error = await createOpencodeReviewer({}, f.connect, f.rules)
       .review(request)
       .catch((e: unknown) => e);
 
@@ -265,7 +309,11 @@ describe("opencode reviewer", () => {
 
   it("interrupts and deletes the session on timeout", async () => {
     const f = fake([{ messages: [], hang: true, tokens: 4 }]);
-    const error = await createOpencodeReviewer({ timeoutMs: 20 }, f.connect)
+    const error = await createOpencodeReviewer(
+      { timeoutMs: 20 },
+      f.connect,
+      f.rules,
+    )
       .review(request)
       .catch((e: unknown) => e);
 
@@ -278,7 +326,7 @@ describe("opencode reviewer", () => {
   it("reports caller aborts as aborted", async () => {
     const f = fake([{ messages: [], hang: true }]);
     const controller = new AbortController();
-    const pending = createOpencodeReviewer({}, f.connect)
+    const pending = createOpencodeReviewer({}, f.connect, f.rules)
       .review({ ...request, signal: controller.signal })
       .catch((e: unknown) => e);
     setTimeout(() => {
@@ -294,7 +342,7 @@ describe("opencode reviewer", () => {
       { messages: [assistant(valid)] },
       { messages: [assistant(valid)] },
     ]);
-    const reviewer = createOpencodeReviewer({}, f.connect);
+    const reviewer = createOpencodeReviewer({}, f.connect, f.rules);
 
     await Promise.all([reviewer.review(request), reviewer.review(request)]);
     await reviewer.close();
@@ -305,14 +353,14 @@ describe("opencode reviewer", () => {
 
   it("waits until the agent is loaded", async () => {
     const f = fake([{ messages: [assistant(valid)] }], "2.0.26", 2);
-    await createOpencodeReviewer({}, f.connect).review(request);
+    await createOpencodeReviewer({}, f.connect, f.rules).review(request);
 
     expect(f.agentPolls()).toBe(3);
   });
 
   it("rejects unsupported OpenCode versions", async () => {
     const f = fake([], "1.19.0");
-    const error = await createOpencodeReviewer({}, f.connect)
+    const error = await createOpencodeReviewer({}, f.connect, f.rules)
       .review(request)
       .catch((e: unknown) => e);
 
@@ -324,17 +372,117 @@ describe("opencode reviewer", () => {
   it("rejects model ids without a provider", async () => {
     const f = fake([]);
     await expect(
-      createOpencodeReviewer({}, f.connect).review({
+      createOpencodeReviewer({}, f.connect, f.rules).review({
         ...request,
         model: "deepseek",
       }),
     ).rejects.toMatchObject({ kind: "runner" });
+  });
+
+  it("wraps schemas that cannot become JSON Schema", async () => {
+    const f = fake([]);
+    await expect(
+      createOpencodeReviewer({}, f.connect, f.rules).review({
+        ...request,
+        schema: z.string().transform((v) => v.length),
+      }),
+    ).rejects.toMatchObject({ kind: "runner" });
+    expect(f.connect).not.toHaveBeenCalled();
+  });
+
+  it("reconnects after the server exits", async () => {
+    const f = fake([
+      { messages: [assistant(valid)] },
+      { messages: [assistant(valid)] },
+    ]);
+    const reviewer = createOpencodeReviewer({}, f.connect, f.rules);
+
+    await reviewer.review(request);
+    f.exit();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await reviewer.review(request);
+
+    expect(f.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not let a stale server's exit drop a newer server", async () => {
+    const old = fake([{ messages: [assistant(valid)] }]);
+    const f = fake([
+      { messages: [assistant(valid)] },
+      { messages: [assistant(valid)] },
+    ]);
+    let calls = 0;
+    const connect: Connect = (...args) =>
+      ++calls === 1 ? old.connect(...args) : f.connect(...args);
+    const reviewer = createOpencodeReviewer({}, connect, f.rules);
+
+    await reviewer.review(request);
+    await reviewer.close();
+    await reviewer.review(request);
+    old.exit();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await reviewer.review(request);
+
+    expect(calls).toBe(2);
+  });
+
+  it("aborts a starting server on close()", async () => {
+    let signal: AbortSignal | undefined;
+    const connect: Connect = (_config, _timeout, s) => {
+      signal = s;
+      return new Promise((_resolve, reject) => {
+        s.addEventListener("abort", () => {
+          reject(s.reason as Error);
+        });
+      });
+    };
+    const reviewer = createOpencodeReviewer({}, connect, () =>
+      Promise.resolve([]),
+    );
+    const pending = reviewer.review(request).catch((e: unknown) => e);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await reviewer.close();
+
+    expect(signal?.aborted).toBe(true);
+    expect(await pending).toMatchObject({ kind: "runner" });
+  });
+
+  it("honors caller aborts during startup", async () => {
+    const f = fake([], "2.0.26", 1_000_000);
+    const controller = new AbortController();
+    const pending = createOpencodeReviewer({}, f.connect, f.rules)
+      .review({ ...request, signal: controller.signal })
+      .catch((e: unknown) => e);
+    setTimeout(() => {
+      controller.abort();
+    }, 20);
+
+    expect(await pending).toMatchObject({ kind: "aborted" });
   });
 });
 
 describe("parseOutput", () => {
   it("accepts surrounding prose and fences", () => {
     expect(parseOutput(`Here:\n${valid}\nDone.`, schema).success).toBe(true);
+    expect(parseOutput("```json\n" + valid + "\n```", schema).success).toBe(
+      true,
+    );
+  });
+
+  it("keeps fences inside string values", () => {
+    const answer = JSON.stringify({
+      findings: [{ message: "use:\n```ts\nif (b === 0) throw\n```" }],
+    });
+    expect(parseOutput(answer, schema)).toMatchObject({ success: true });
+  });
+
+  it("treats prose with braces as missing, malformed JSON as invalid", () => {
+    expect(parseOutput("if (x) { y() } looks fine", schema)).toMatchObject({
+      reason: "missing",
+    });
+    expect(parseOutput('{"findings": [', schema)).toMatchObject({
+      reason: "invalid",
+    });
   });
 
   it("reports schema errors", () => {

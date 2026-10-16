@@ -58,6 +58,7 @@ Facts that shape the design (S = from source v2.0.26, L = verified live on 2.0.2
 - **Permissions:** session `permissions` (sent on create) are evaluated after the agent's rules, and the last match wins. Wildcards match `/`. A deny is final: saved "always allow" rules and plugin hooks can't override it. Tools whose last rule for the action is a deny on `*` are hidden from the model. (S, L)
 - **`grep` can read `.env`:** grep's permission resource is the search pattern, not the path. `grep path=".env"` returned the secret line while `read *.env` was denied. (L)
 - **External directories:** paths outside the session directory need `external_directory`; a `*` deny blocks them. (S, L)
+- **Lexical paths:** `read` checks the path relative to the session directory without resolving symlinks, so a symlink gets around both the `.env` rule and `external_directory`. Matching is case-sensitive except on Windows. (S)
 - **Agents and step cap:** agents come from config (`agents.<name>`: `system`, `mode`, `hidden`, `steps`, `permissions`). `steps` is per agent, so it's fixed per server. On the last step the model gets a max-steps prompt and no tool runs. (S, L)
 - **Plugins:** there is no `OPENCODE_PURE`. Config `plugins: ["-*", "opencode.*"]` disables every non-built-in plugin. An external plugin's module is still imported but never set up. (S, L)
 - **Config injection:** `OPENCODE_CONFIG_CONTENT` is merged last, above global and project config. (S, L)
@@ -72,44 +73,46 @@ Facts that shape the design (S = from source v2.0.26, L = verified live on 2.0.2
 
 ### Key Decisions
 
-| Decision           | Chosen Option                                                                                                                                              | Rationale                                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| OpenCode version   | 2.x only; `GET /api/info` major checked on connect                                                                                                         | Installed version; 1.x API is incompatible                                                             |
-| Client             | Own narrow `fetch` port (about 9 calls) with zod-validated responses; no `@opencode/*` dependency                                                          | No public 2.x client; avoids `effect` RC; drift fails loudly                                           |
-| Output typing      | Generic over a zod schema (`ReviewRequest<T>`)                                                                                                             | Findings schema is undecided; the consolidator needs a different shape                                 |
-| Output transport   | JSON Schema in the prompt; JSON taken from the last assistant message's text (fences and surrounding prose tolerated) and validated with zod               | No structured output in 2.x; still typed JSON, not parsed Markdown                                     |
-| Model identifier   | Opaque `provider/model` string interpreted by the adapter                                                                                                  | OpenCode's naming; other runners differ                                                                |
-| Validation/retries | Retry only on missing or invalid output, in a new session with the previous output and the validation error (no diff), up to `maxAttempts` (default 2)     | Provider errors would fail again and the server already retries them; resending the diff is costly     |
-| Read-only          | Session `permissions`: `"*": deny`; allow `read`, `glob`; deny `read` on `*.env`, `*.env.*`; allow `*.env.example`. `grep` denied                          | Deny by default, nothing falls back to `ask`; session rules apply on any agent; grep would leak `.env` |
-| Step cap           | Dedicated hidden agent `spiral-reviewer` with `steps` from `maxSteps` (default 20, max 100)                                                                | Per-reviewer budget (README Budgets)                                                                   |
-| Plugins            | `plugins: ["-*", "opencode.*"]` in `OPENCODE_CONFIG_CONTENT`                                                                                               | Prevents review recursion via our own OpenCode plugin and plugin hooks                                 |
-| Server             | `opencode serve --stdio` on port 0 with a random password, started lazily (one shared start promise), reused across reviews, stopped by `close()`, unref'd | Parallel reviewers share one server; stdin ties its lifetime to ours                                   |
-| Readiness          | Poll `GET /api/agent/spiral-reviewer?location[directory]=<cwd>` once per directory                                                                         | Agents load asynchronously per location                                                                |
-| Usage              | Session totals (tokens, cost) per attempt; steps = assistant messages; summed over attempts                                                                | Includes every step and compaction                                                                     |
-| Sessions           | Created with a title; deleted after each attempt, on success and on error                                                                                  | No extra title call; keeps reviewer sessions (with the diff) out of the user's OpenCode history        |
-| Timeout/abort      | One deadline per review (`timeoutMs`, default 10 min) combined with the caller's signal; on expiry `interrupt`, collect usage, delete                      | Bounded by budget; server-side retries can take minutes                                                |
-| Errors             | `ReviewerError` with `kind` (`auth`, `quota`, `rate-limit`, `provider`, `invalid-output`, `timeout`, `aborted`, `runner`) and usage so far                 | Core can fail open (R7) and still count spend                                                          |
+| Decision           | Chosen Option                                                                                                                                                                                                             | Rationale                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| OpenCode version   | 2.x only; `GET /api/info` major checked on connect                                                                                                                                                                        | Installed version; 1.x API is incompatible                                                                       |
+| Client             | Own narrow `fetch` port (about 9 calls) with zod-validated responses; no `@opencode/*` dependency                                                                                                                         | No public 2.x client; avoids `effect` RC; drift fails loudly                                                     |
+| Output typing      | Generic over a zod schema (`ReviewRequest<T>`)                                                                                                                                                                            | Findings schema is undecided; the consolidator needs a different shape                                           |
+| Output transport   | JSON Schema in the prompt; JSON taken from the last assistant message's text (fences and surrounding prose tolerated) and validated with zod                                                                              | No structured output in 2.x; still typed JSON, not parsed Markdown                                               |
+| Model identifier   | Opaque `provider/model` string interpreted by the adapter                                                                                                                                                                 | OpenCode's naming; other runners differ                                                                          |
+| Validation/retries | Retry only on missing or invalid output, up to `maxAttempts` (default 2), in a new session. JSON that fails the schema is reformatted (previous output and error, no diff); an answer with no JSON reruns the full review | Provider errors would fail again and the server already retries them; reformatting prose would invent a review   |
+| Read-only          | Session `permissions`: `"*": deny`; allow `read`, `glob`; deny `read` on `*.env`, `*.env.*`; allow `*.env.example`; deny `read` through every git-visible symlink (tracked or untracked). `grep` denied                   | Deny by default; session rules apply on any agent; grep and symlinks would leak `.env` or files outside the repo |
+| Step cap           | Dedicated hidden agent `spiral-reviewer` with `steps` from `maxSteps` (default 20, max 100)                                                                                                                               | Per-reviewer budget (README Budgets)                                                                             |
+| Plugins            | `plugins: ["-*", "opencode.*"]` in `OPENCODE_CONFIG_CONTENT`                                                                                                                                                              | Prevents review recursion via our own OpenCode plugin and plugin hooks                                           |
+| Server             | `opencode serve --stdio` on port 0 with a random password, started lazily (one shared start), reused across reviews, forgotten when it exits, stopped (or its start aborted) by `close()`, unref'd                        | Parallel reviewers share one server; stdin ties its lifetime to ours; a crash must not break later reviews       |
+| Readiness          | Poll `GET /api/agent/spiral-reviewer?location[directory]=<cwd>` once per directory and server, bounded by `startTimeoutMs`                                                                                                | Agents load asynchronously per location                                                                          |
+| Usage              | Session totals (tokens, cost) per attempt; steps = assistant messages; summed over attempts                                                                                                                               | Includes every step and compaction                                                                               |
+| Sessions           | Created with a title; deleted after each attempt, on success and on error                                                                                                                                                 | No extra title call; keeps reviewer sessions (with the diff) out of the user's OpenCode history                  |
+| Timeout/abort      | One deadline per review (`timeoutMs`, default 10 min) combined with the caller's signal, covering startup; every other request has a 10 s timeout; on expiry `interrupt`, collect usage, delete                           | Bounded by budget; a hung server cannot block fail-open (R7)                                                     |
+| Errors             | `ReviewerError` with `kind` (`auth`, `quota`, `rate-limit`, `provider`, `invalid-output`, `timeout`, `aborted`, `runner`) and usage so far                                                                                | Core can fail open (R7) and still count spend                                                                    |
 
 ### Risks & Trade-offs
 
-| Risk/Trade-off                                                         | Impact | Mitigation                                                                                |
-| ---------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------- |
-| 2.x API is young; `wait` is experimental                               | High   | Responses validated with zod; major version checked; live test pins behavior              |
-| No schema-constrained decoding; weaker models may answer in prose      | Medium | Client-side validation, retry without the diff                                            |
-| External plugin modules are still imported (not set up)                | Low    | Top-level plugin code only; hooks and tools never register                                |
-| Third-party provider-auth plugins are disabled                         | Medium | Documented; revisit if users need them                                                    |
-| `cost` is an estimate from OpenCode's catalog                          | Medium | Not verified against a paid model yet (no credit); compare with the Zen/Go console        |
-| Interrupted step's tokens are not recorded                             | Low    | Timeouts undercount by at most one step                                                   |
-| Reviewer can read any non-`.env` file in the repo (e.g. other secrets) | Medium | Same exposure as sending the diff; README Constraints already says code goes to providers |
-| Without `grep`, reviewers search with `glob` + `read` only             | Low    | Revisit if upstream adds path-based grep permissions                                      |
-| Retries spend quota                                                    | Medium | `maxAttempts` default 2; retries without the diff; usage counted                          |
+| Risk/Trade-off                                                         | Impact | Mitigation                                                                                         |
+| ---------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------- |
+| 2.x API is young; `wait` is experimental                               | High   | Responses validated with zod; major version checked; live test pins behavior                       |
+| No schema-constrained decoding; weaker models may answer in prose      | Medium | Client-side validation, retry without the diff                                                     |
+| External plugin modules are still imported (not set up)                | Low    | Top-level plugin code only; hooks and tools never register                                         |
+| Third-party provider-auth plugins are disabled                         | Medium | Documented; revisit if users need them                                                             |
+| `cost` is an estimate from OpenCode's catalog                          | Medium | Not verified against a paid model yet (no credit); compare with the Zen/Go console                 |
+| Interrupted step's tokens are not recorded                             | Low    | Timeouts undercount by at most one step                                                            |
+| Reviewer can read any non-`.env` file in the repo (e.g. other secrets) | Medium | Same exposure as sending the diff; README Constraints already says code goes to providers          |
+| `.env` rule is case-sensitive on macOS (`.ENV` is readable)            | Low    | OpenCode wildcards have no case-insensitive form; report upstream with the symlink and grep issues |
+| Symlinks in gitignored paths are not denied                            | Low    | A diff cannot add ignored files; report the lexical check upstream                                 |
+| Without `grep`, reviewers search with `glob` + `read` only             | Low    | Revisit if upstream adds path-based grep permissions                                               |
+| Retries spend quota                                                    | Medium | `maxAttempts` default 2; retries without the diff; usage counted                                   |
 
 ## Implementation
 
 `review()`: ensure the server and the agent for `cwd` are ready. Then, per attempt: create a session (title, agent, model, `location.directory`, permissions), prompt with instructions, the JSON Schema and the diff as one text, wait, read the session totals and assistant messages, delete the session.
 
 - The last assistant message has `error`: raise `ReviewerError` with the mapped kind, no retry.
-- Output missing or invalid: retry in a new session with the previous output and the validation error, up to `maxAttempts`.
+- Output invalid: reformat in a new session with the previous output and the validation error. Output missing: rerun the full review. Up to `maxAttempts` in total.
 - Timeout and abort call `interrupt` and raise `ReviewerError` with the usage so far.
 - Sessions are deleted in a `finally`.
 
@@ -121,6 +124,7 @@ Facts that shape the design (S = from source v2.0.26, L = verified live on 2.0.2
 | `src/core/findings.ts`                        | Provisional findings schema                |
 | `src/adapters/opencode/server.ts`             | `opencode serve --stdio` lifecycle         |
 | `src/adapters/opencode/api.ts`                | Narrow HTTP port with validated responses  |
+| `src/adapters/opencode/symlinks.ts`           | Deny rules for git-visible symlinks        |
 | `src/adapters/opencode/reviewer.ts`           | OpenCode adapter                           |
 | `src/adapters/opencode/reviewer.test.ts`      | Offline tests with a fake port             |
 | `src/adapters/opencode/reviewer.live.test.ts` | Live test, skipped unless `SPIRAL_LIVE=1`  |
@@ -136,7 +140,7 @@ Facts that shape the design (S = from source v2.0.26, L = verified live on 2.0.2
 
 ## Testing Strategy
 
-- Offline (fake port): server config (step cap, plugins), permission rules, JSON Schema and diff sent, valid output, retry on invalid then valid output (retry without the diff), exhausted retries, no retry on provider error, error-kind mapping, usage summed over steps and attempts, timeout and abort (interrupt, delete), agent readiness polling, one server start under concurrent reviews, version check, model id check.
+- Offline (fake port): server config (step cap, plugins), permission rules, JSON Schema and diff sent, valid output, retry on invalid then valid output (retry without the diff), exhausted retries, no retry on provider error, error-kind mapping, usage summed over steps and attempts, timeout and abort (interrupt, delete), agent readiness polling, one server start under concurrent reviews, version check, model id check, reconnect after server exit, stale-start guard, startup abort, symlink rules, output parsing (fences in strings, prose vs malformed JSON).
 - Live (`SPIRAL_LIVE=1`, real `opencode`; free model by default, `SPIRAL_LIVE_MODEL` for a paid one): review a fixture diff that needs a file read. Check, from the raw messages, that edit/write/shell/web/grep are unavailable or refused, that `.env` content never appears, and that nothing is written.
 
 ## Acceptance Criteria

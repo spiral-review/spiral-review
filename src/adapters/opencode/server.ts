@@ -7,6 +7,7 @@ export interface ServerOptions {
   /** Merged last into OpenCode's config (`OPENCODE_CONFIG_CONTENT`). */
   readonly config: object;
   readonly timeoutMs: number;
+  readonly signal?: AbortSignal;
   readonly command?: string;
 }
 
@@ -14,6 +15,8 @@ export interface Server {
   readonly url: string;
   /** Basic auth header value for every request. */
   readonly authorization: string;
+  /** Resolves when the server process exits, for any reason. */
+  readonly exited: Promise<void>;
   stop(): Promise<void>;
 }
 
@@ -57,9 +60,13 @@ export function startServer(options: ServerOptions): Promise<Server> {
     const lines = createInterface({ input: proc.stdout });
     const fail = (error: Error) => {
       clearTimeout(timer);
+      options.signal?.removeEventListener("abort", onAbort);
       lines.close();
       void stop();
       reject(error);
+    };
+    const onAbort = () => {
+      fail(options.signal?.reason as Error);
     };
     const timer = setTimeout(() => {
       fail(
@@ -83,6 +90,8 @@ export function startServer(options: ServerOptions): Promise<Server> {
     };
     proc.on("error", onError);
     proc.once("exit", onEarlyExit);
+    if (options.signal?.aborted) onAbort();
+    options.signal?.addEventListener("abort", onAbort, { once: true });
     lines.on("line", (line) => {
       let url: unknown;
       try {
@@ -92,6 +101,7 @@ export function startServer(options: ServerOptions): Promise<Server> {
       }
       if (typeof url !== "string") return;
       clearTimeout(timer);
+      options.signal?.removeEventListener("abort", onAbort);
       lines.close();
       proc.off("exit", onEarlyExit);
       proc.off("error", onError);
@@ -105,6 +115,7 @@ export function startServer(options: ServerOptions): Promise<Server> {
       resolve({
         url,
         authorization: `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}`,
+        exited,
         stop,
       });
     });

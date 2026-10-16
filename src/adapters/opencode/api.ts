@@ -43,7 +43,7 @@ export interface OpencodeApi {
   hasAgent(agent: string, directory: string): Promise<boolean>;
   createSession(input: CreateSessionInput): Promise<string>;
   prompt(sessionID: string, text: string): Promise<void>;
-  /** Resolves when the session is idle. */
+  /** Resolves when the session is idle; bounded only by `signal`. */
   wait(sessionID: string, signal: AbortSignal): Promise<void>;
   interrupt(sessionID: string): Promise<void>;
   assistantMessages(sessionID: string): Promise<AssistantMessage[]>;
@@ -53,8 +53,14 @@ export interface OpencodeApi {
 
 /** Above any sane step cap; one page is enough. */
 const MESSAGE_PAGE = 200;
+/** Every call except `wait`, so a hung server cannot hold a review past its deadline for long. */
+export const REQUEST_TIMEOUT_MS = 10_000;
 
-export function createHttpApi(url: string, authorization: string): OpencodeApi {
+export function createHttpApi(
+  url: string,
+  authorization: string,
+  requestTimeoutMs = REQUEST_TIMEOUT_MS,
+): OpencodeApi {
   const call = async (
     method: string,
     path: string,
@@ -64,7 +70,7 @@ export function createHttpApi(url: string, authorization: string): OpencodeApi {
       method,
       headers: { authorization, "content-type": "application/json" },
       body: options.body === undefined ? null : JSON.stringify(options.body),
-      signal: options.signal ?? null,
+      signal: options.signal ?? AbortSignal.timeout(requestTimeoutMs),
     });
     const text = await response.text();
     if (!(options.ok ?? [200]).includes(response.status)) {

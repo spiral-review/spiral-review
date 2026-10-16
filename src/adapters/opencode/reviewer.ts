@@ -1,4 +1,5 @@
 // OpenCode 2.x reviewer adapter (ADR-001 D2, plan 001).
+import { realpath } from "node:fs/promises";
 import { z } from "zod";
 import {
   addUsage,
@@ -11,27 +12,34 @@ import {
 } from "../../core/reviewer.js";
 import { createHttpApi, type OpencodeApi, type PermissionRule } from "./api.js";
 import { startServer } from "./server.js";
+import { symlinkRules } from "./symlinks.js";
 
 export interface OpencodeReviewerOptions {
   /** Model calls per attempt (agent `steps`); the last one cannot use tools. */
   readonly maxSteps?: number;
   /** Attempts per review; only missing or invalid output is retried. */
   readonly maxAttempts?: number;
-  /** Whole review, all attempts. */
+  /** Whole review including startup; cleanup after the deadline adds at most a few short requests. */
   readonly timeoutMs?: number;
-  /** Server start plus agent readiness. */
+  /** Server start, and separately agent readiness per directory. */
   readonly startTimeoutMs?: number;
 }
 
 export interface Connection {
   readonly api: OpencodeApi;
+  /** Resolves when the server goes away. */
+  readonly exited: Promise<void>;
   close(): Promise<void>;
 }
 
 export type Connect = (
   config: object,
   timeoutMs: number,
+  signal: AbortSignal,
 ) => Promise<Connection>;
+
+/** Symlink rules for a directory; injectable for tests. */
+export type ExtraRules = (cwd: string) => Promise<PermissionRule[]>;
 
 export const AGENT = "spiral-reviewer";
 export const SUPPORTED_MAJOR = 2;
@@ -68,17 +76,42 @@ export function serverConfig(maxSteps: number): object {
   };
 }
 
-const connectHttp: Connect = async (config, timeoutMs) => {
-  const server = await startServer({ config, timeoutMs });
+const connectHttp: Connect = async (config, timeoutMs, signal) => {
+  const server = await startServer({ config, timeoutMs, signal });
   return {
     api: createHttpApi(server.url, server.authorization),
+    exited: server.exited,
     close: () => server.stop(),
   };
 };
 
+// Plugins (agents included) activate asynchronously per location after the first request.
+export async function waitForAgent(
+  api: OpencodeApi,
+  directory: string,
+  timeoutMs: number,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!(await api.hasAgent(AGENT, directory))) {
+    if (Date.now() > deadline) {
+      throw new Error(
+        `agent ${AGENT} not loaded for ${directory} within ${String(timeoutMs)}ms`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, READY_POLL_MS));
+  }
+}
+
+interface Live {
+  readonly conn: Connection;
+  /** Agent readiness per directory, valid for this server only. */
+  readonly ready: Map<string, Promise<void>>;
+}
+
 export function createOpencodeReviewer(
   options: OpencodeReviewerOptions = {},
   connect: Connect = connectHttp,
+  extraRules: ExtraRules = symlinkRules,
 ): Reviewer {
   const maxSteps = options.maxSteps ?? 20;
   const maxAttempts = options.maxAttempts ?? 2;
@@ -91,41 +124,48 @@ export function createOpencodeReviewer(
     throw new RangeError("maxAttempts must be a positive integer");
   }
 
-  let connection: Promise<Connection> | undefined;
-  const ready = new Map<string, Promise<void>>();
+  let current: { live: Promise<Live>; stop: AbortController } | undefined;
 
-  const connected = (): Promise<Connection> => {
-    connection ??= (async () => {
-      const conn = await connect(serverConfig(maxSteps), startTimeoutMs);
-      const version = await conn.api.version();
+  const connected = (): Promise<Live> => {
+    if (current) return current.live;
+    const stop = new AbortController();
+    const live = (async () => {
+      const conn = await connect(
+        serverConfig(maxSteps),
+        startTimeoutMs,
+        stop.signal,
+      );
+      const version = await conn.api.version().catch(async (error: unknown) => {
+        await conn.close();
+        throw error;
+      });
       if (Number.parseInt(version, 10) !== SUPPORTED_MAJOR) {
         await conn.close();
         throw new Error(
           `OpenCode ${String(SUPPORTED_MAJOR)}.x required, found ${version}`,
         );
       }
-      return conn;
+      return { conn, ready: new Map<string, Promise<void>>() };
     })();
-    connection.catch(() => {
-      connection = undefined;
-    });
-    return connection;
+    const entry = { live, stop };
+    current = entry;
+    const forget = () => {
+      if (current === entry) current = undefined;
+    };
+    // A dead server must not poison later reviews.
+    live.then((l) => l.conn.exited.then(forget), forget);
+    return live;
   };
 
-  // Plugins (agents included) activate asynchronously per location after the first request.
-  const agentReady = (api: OpencodeApi, directory: string): Promise<void> => {
-    let promise = ready.get(directory);
+  const agentReady = (live: Live, directory: string): Promise<void> => {
+    let promise = live.ready.get(directory);
     if (!promise) {
-      promise = (async () => {
-        const deadline = Date.now() + startTimeoutMs;
-        while (!(await api.hasAgent(AGENT, directory))) {
-          if (Date.now() > deadline)
-            throw new Error(`agent ${AGENT} not loaded for ${directory}`);
-          await new Promise((resolve) => setTimeout(resolve, READY_POLL_MS));
-        }
-      })();
-      promise.catch(() => ready.delete(directory));
-      ready.set(directory, promise);
+      const p = waitForAgent(live.conn.api, directory, startTimeoutMs);
+      p.catch(() => {
+        if (live.ready.get(directory) === p) live.ready.delete(directory);
+      });
+      live.ready.set(directory, p);
+      promise = p;
     }
     return promise;
   };
@@ -136,32 +176,57 @@ export function createOpencodeReviewer(
         ? AbortSignal.any([request.signal, AbortSignal.timeout(timeoutMs)])
         : AbortSignal.timeout(timeoutMs);
       const model = parseModel(request.model);
-      let api: OpencodeApi;
+      let jsonSchema: string;
       try {
-        api = (await connected()).api;
-        await agentReady(api, request.cwd);
+        jsonSchema = JSON.stringify(z.toJSONSchema(request.schema));
       } catch (error) {
+        throw new ReviewerError(
+          "runner",
+          `schema cannot be expressed as JSON Schema: ${messageOf(error)}`,
+          emptyUsage,
+          { cause: error },
+        );
+      }
+
+      let api: OpencodeApi;
+      let directory: string;
+      let permissions: PermissionRule[];
+      try {
+        directory = await realpath(request.cwd);
+        const [live, rules] = await untilAborted(
+          Promise.all([connected(), extraRules(directory)]),
+          signal,
+        );
+        await untilAborted(agentReady(live, directory), signal);
+        api = live.conn.api;
+        permissions = [...PERMISSIONS, ...rules];
+      } catch (error) {
+        if (signal.aborted) abortError(signal, emptyUsage);
         throw new ReviewerError("runner", messageOf(error), emptyUsage, {
           cause: error,
         });
       }
 
-      const jsonSchema = JSON.stringify(z.toJSONSchema(request.schema));
+      const first = firstPrompt(request, jsonSchema);
       let usage = emptyUsage;
-      let text = firstPrompt(request, jsonSchema);
+      let text = first;
       let invalid = "";
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         if (signal.aborted) abortError(signal, usage);
         const result = await runAttempt(
           api,
-          { model, directory: request.cwd, text, signal },
+          { model, directory, permissions, text, signal },
           usage,
         );
         usage = result.usage;
         const parsed = parseOutput(result.output, request.schema);
         if (parsed.success) return { output: parsed.data, usage };
         invalid = parsed.error;
-        text = retryPrompt(result.output, parsed.error, jsonSchema);
+        // Without JSON there is nothing to reformat: asking for one would invent a review.
+        text =
+          parsed.reason === "missing"
+            ? first
+            : retryPrompt(result.output, parsed.error, jsonSchema);
       }
       throw new ReviewerError(
         "invalid-output",
@@ -170,17 +235,34 @@ export function createOpencodeReviewer(
       );
     },
     async close() {
-      const pending = connection;
-      connection = undefined;
-      ready.clear();
-      if (pending) await (await pending.catch(() => undefined))?.close();
+      const entry = current;
+      current = undefined;
+      if (!entry) return;
+      entry.stop.abort(new Error("reviewer closed"));
+      await (await entry.live.catch(() => undefined))?.conn.close();
     },
   };
+}
+
+/** Rejects as soon as `signal` aborts; the shared work itself keeps running for other reviews. */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  let onAbort = () => undefined as unknown;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => {
+      reject(signal.reason as Error);
+    };
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  });
+  return Promise.race([promise, aborted]).finally(() => {
+    signal.removeEventListener("abort", onAbort);
+  });
 }
 
 interface Attempt {
   readonly model: { providerID: string; id: string };
   readonly directory: string;
+  readonly permissions: readonly PermissionRule[];
   readonly text: string;
   readonly signal: AbortSignal;
 }
@@ -205,7 +287,7 @@ async function runAttempt(
       agent: AGENT,
       model: attempt.model,
       directory: attempt.directory,
-      permissions: PERMISSIONS,
+      permissions: attempt.permissions,
     });
   } catch (error) {
     return fail("runner", messageOf(error), error);
@@ -284,7 +366,7 @@ export function errorKind(type: string): ReviewerErrorKind {
   }
 }
 
-function parseModel(model: string): { providerID: string; id: string } {
+export function parseModel(model: string): { providerID: string; id: string } {
   const slash = model.indexOf("/");
   if (slash <= 0 || slash === model.length - 1) {
     throw new ReviewerError(
@@ -296,26 +378,46 @@ function parseModel(model: string): { providerID: string; id: string } {
   return { providerID: model.slice(0, slash), id: model.slice(slash + 1) };
 }
 
+export type ParseResult<T> =
+  | { success: true; data: T }
+  | { success: false; reason: "missing" | "invalid"; error: string };
+
 export function parseOutput<T>(
   output: string,
   schema: z.ZodType<T>,
-): { success: true; data: T } | { success: false; error: string } {
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(output)?.[1];
-  const candidate = (fenced ?? output).trim();
-  const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  if (start === -1 || end < start)
-    return { success: false, error: "no JSON object in the answer" };
-  let json: unknown;
-  try {
-    json = JSON.parse(candidate.slice(start, end + 1));
-  } catch (error) {
-    return { success: false, error: `invalid JSON: ${messageOf(error)}` };
+): ParseResult<T> {
+  const trimmed = output.trim();
+  // Bare JSON first: fences inside string values must not be mistaken for a wrapper.
+  const candidates = [
+    trimmed,
+    ...Array.from(trimmed.matchAll(/```(?:json)?\s*\n([\s\S]*?)\n?```/g), (m) =>
+      (m[1] ?? "").trim(),
+    ),
+    trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1),
+  ];
+  // "invalid" only when the reviewer clearly answered in JSON; braces in prose count as missing.
+  let firstError: string | undefined;
+  for (const candidate of candidates) {
+    if (!candidate.startsWith("{")) continue;
+    let json: unknown;
+    try {
+      json = JSON.parse(candidate);
+    } catch (error) {
+      if (candidate === trimmed)
+        firstError ??= `invalid JSON: ${messageOf(error)}`;
+      continue;
+    }
+    const parsed = schema.safeParse(json);
+    if (parsed.success) return { success: true, data: parsed.data };
+    firstError ??= z.prettifyError(parsed.error);
   }
-  const parsed = schema.safeParse(json);
-  return parsed.success
-    ? { success: true, data: parsed.data }
-    : { success: false, error: z.prettifyError(parsed.error) };
+  return firstError === undefined
+    ? {
+        success: false,
+        reason: "missing",
+        error: "no JSON object in the answer",
+      }
+    : { success: false, reason: "invalid", error: firstError };
 }
 
 function firstPrompt(
