@@ -45,6 +45,7 @@ export const AGENT = "spiral-reviewer";
 export const SUPPORTED_MAJOR = 2;
 
 /**
+ * Best-effort hardening, not isolation: OpenCode's permissions are not a sandbox (its SECURITY.md).
  * Session rules are evaluated after the agent's; the last match wins. `grep` stays denied: its permission
  * resource is the pattern, not the path, so it could read `.env` files.
  */
