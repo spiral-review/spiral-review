@@ -60,7 +60,7 @@ In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_gene
 - [x] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode 2.x via its HTTP API, read-only on a best-effort basis (only `read` and `glob`, `.env` and symlinks denied), findings as zod-validated JSON ([plan 001](plans/001_opencode-adapter.md)).
 - [ ] **Configuration** (D6): defaults < `~/.config/spiral-review` < `.spiral-review.toml`; per-repo lens prompt overrides; a per-repo review instructions file (what failure looks like, nit cap, paths to skip, file and line evidence required, summary that starts with the finding count), like Anthropic's `REVIEW.md` ([source][anthropic-review]).
 - [ ] **Deterministic gates:** run the repo's lint, type check and tests before any LLM review; commands come from config.
-- [ ] **Risk tier classifier:** trivial / standard / high-risk from the diff. Needs: risk tier thresholds.
+- [ ] **Risk tier classifier:** trivial / standard / high-risk from the diff. Deterministic rules set the minimum tier; optional escalators (e.g. a learned classifier) run after them and can only raise it, each with a reason shown in the digest. Needs: risk tier thresholds.
 - [ ] **`review`, standard tier:** one reviewer, one round, findings and verdict from the core. Needs: findings schema and blocking rule; large diffs.
 - [ ] **Gauntlet and consolidator:** lens fan-out, optionally on different models; consolidator merges, verifies, drops false positives. Needs: findings schema.
 - [ ] **Claude Code Stop hook** (D3, D4): thin adapter over the core; `hook` reviews uncommitted diff incl. untracked files; returns `{"decision":"block","reason":...}`; diff-hash guard, round cap, fail-open, verify-don't-obey instructions. Needs the findings schema and blocking rule.
@@ -91,6 +91,7 @@ Follow-ups with a known trigger.
 Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 
 - **Risk tier thresholds:** diff size, sensitive paths, how tests weigh.
+- **Learned escalator:** e.g. TypeSafe's Jev (calibrated yes/no, label and score answers). Unverified: whether it runs locally (a hosted API sends the diff to another vendor and needs its own key), licensing for an npm CLI, accuracy (measure with reviewer evals first).
 - **Hook invocation:** how the installed integration calls spiral-review. `npx`/`pnpm dlx` hit the registry on every turn and `npx` is missing when Node is installed by pnpm (v11+). Leaning: global install (`spiral-review` on `PATH`), checked by `init`.
 - **Large diffs:** what to send when a diff exceeds the reviewer's practical size (the prototype truncates at `REVIEW_MAX_BYTES`): truncate and say so, split by file, or escalate to the human.
 - **Findings schema and blocking rule** (severity × confidence). Leaning ([source][anthropic-review]):
