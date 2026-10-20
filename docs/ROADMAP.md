@@ -57,7 +57,7 @@ flowchart LR
 In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_general-design.md). "Needs" lists open questions to decide first.
 
 - [x] **Scaffold** (D1, D7): strict TypeScript, npm package `spiral-review` exporting a programmatic API, thin CLI with stubs for `init`, `review`, `hook`, `pr`, `stats`; lint, tests and CI for this repo.
-- [ ] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode via `@opencode-ai/sdk`, read-only (edit, bash, webfetch denied), findings as JSON-Schema-validated output. Record what the SDK reports per message (tokens, cost).
+- [x] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode 2.x via its HTTP API, read-only on a best-effort basis (only `read` and `glob`, `.env` and symlinks denied), findings as zod-validated JSON ([plan 001](plans/001_opencode-adapter.md)).
 - [ ] **Configuration** (D6): defaults < `~/.config/spiral-review` < `.spiral-review.toml`; per-repo lens prompt overrides.
 - [ ] **Deterministic gates:** run the repo's lint, type check and tests before any LLM review; commands come from config.
 - [ ] **Risk tier classifier:** trivial / standard / high-risk from the diff. Needs: risk tier thresholds.
@@ -66,6 +66,7 @@ In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_gene
 - [ ] **Claude Code Stop hook** (D3, D4): thin adapter over the core; `hook` reviews uncommitted diff incl. untracked files; returns `{"decision":"block","reason":...}`; diff-hash guard, round cap, fail-open, verify-don't-obey instructions. Needs the findings schema and blocking rule.
 - [ ] **`init`** (north star 1, R12): checks prerequisites (OpenCode, `gh`, auth, `spiral-review` on `PATH`), installs the coding-agent plugin (ship procedure, `gh pr create` guard, per-turn review). Needs: hook invocation.
 - [ ] **OpenCode plugin adapter** (D3, D4): spike first — verify a plugin can send findings into the active session on `session.idle`.
+- [ ] **Reviewer isolation:** OpenCode permissions are not a sandbox (its threat model), so the read-only reviewer is best effort. Give reviewers no file tools (the diff plus files the core sends), or run OpenCode in a container or OS sandbox. Needed before reviewing untrusted PRs.
 - [ ] **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, result cache. Needs digest format and risk tiers.
 - [ ] **Budget ledger and degradation:** per-reviewer, per-task and global budgets; degrade instead of skipping. Needs: budget units, ledger concurrency, degradation order, shared quota.
 - [ ] **`stats` and reviewer metrics:** accept/reject rates per lens and model. Needs: accept/reject protocol.
@@ -93,7 +94,7 @@ Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 - **Large diffs:** what to send when a diff exceeds the reviewer's practical size (the prototype truncates at `REVIEW_MAX_BYTES`): truncate and say so, split by file, or escalate to the human.
 - **Findings schema and blocking rule** (severity × confidence).
 - **Accept/reject protocol:** how the coding agent reports per-finding accepted/rejected/fixed by finding ID. Reviewer metrics depend on it.
-- **Budget units:** subscriptions don't expose remaining quota; check whether the OpenCode SDK reports tokens or cost per message.
+- **Budget units:** subscriptions don't expose remaining quota. OpenCode 2.x reports per message, and as session totals, tokens (input, output, reasoning, cache read/write) and `cost` in USD. `cost` is OpenCode's estimate from its price catalog, not the provider's, and is 0 for free models ([plan 001](plans/001_opencode-adapter.md)). Not yet compared with the Zen/Go console.
 - **Ledger concurrency:** sessions in different repos may write the global ledger at the same time (file lock, SQLite?).
 - **Degradation order** when a budget is exhausted.
 - **Digest format.**

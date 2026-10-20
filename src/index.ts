@@ -6,3 +6,10 @@ const pkg = JSON.parse(
 ) as { version: string };
 
 export const VERSION: string = pkg.version;
+
+export * from "./core/reviewer.js";
+export * from "./core/findings.js";
+export {
+  createOpencodeReviewer,
+  type OpencodeReviewerOptions,
+} from "./adapters/opencode/reviewer.js";
