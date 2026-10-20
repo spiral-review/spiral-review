@@ -58,20 +58,31 @@ In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_gene
 
 - [x] **Scaffold** (D1, D7): strict TypeScript, npm package `spiral-review` exporting a programmatic API, thin CLI with stubs for `init`, `review`, `hook`, `pr`, `stats`; lint, tests and CI for this repo.
 - [x] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode 2.x via its HTTP API, read-only on a best-effort basis (only `read` and `glob`, `.env` and symlinks denied), findings as zod-validated JSON ([plan 001](plans/001_opencode-adapter.md)).
-- [ ] **Configuration** (D6): defaults < `~/.config/spiral-review` < `.spiral-review.toml`; per-repo lens prompt overrides; a per-repo review instructions file (what failure looks like, nit cap, paths to skip, file and line evidence required, summary that starts with the finding count), like Anthropic's `REVIEW.md` ([source][anthropic-review]).
-- [ ] **Deterministic gates:** run the repo's lint, type check and tests before any LLM review; commands come from config.
-- [ ] **Risk tier classifier:** trivial / standard / high-risk from the diff. Deterministic rules set the minimum tier; optional escalators (e.g. a learned classifier) run after them and can only raise it, each with a reason shown in the digest. Needs: risk tier thresholds.
-- [ ] **`review`, standard tier:** one reviewer, one round, findings and verdict from the core. Needs: findings schema and blocking rule; large diffs.
+- [ ] **MVP** · **Configuration** (D6): defaults < `~/.config/spiral-review` < `.spiral-review.toml`; per-repo lens prompt overrides; a per-repo review instructions file (what failure looks like, nit cap, paths to skip, file and line evidence required, summary that starts with the finding count), like Anthropic's `REVIEW.md` ([source][anthropic-review]).
+- [ ] **MVP** · **Deterministic gates:** run the repo's lint, type check and tests before any LLM review; commands come from config.
+- [ ] **MVP** · **Risk tier classifier:** trivial / standard / high-risk from the diff. Deterministic rules set the minimum tier; optional escalators (e.g. a learned classifier) run after them and can only raise it, each with a reason shown in the digest. Needs: risk tier thresholds.
+- [ ] **MVP** · **`review`, standard tier:** one reviewer, one round, findings and verdict from the core. Needs: findings schema and blocking rule; large diffs.
 - [ ] **Gauntlet and consolidator:** lens fan-out, optionally on different models; consolidator merges, verifies, drops false positives. Needs: findings schema.
-- [ ] **Claude Code Stop hook** (D3, D4): thin adapter over the core; `hook` reviews uncommitted diff incl. untracked files; returns `{"decision":"block","reason":...}`; diff-hash guard, round cap, fail-open, verify-don't-obey instructions. Needs the findings schema and blocking rule.
-- [ ] **`init`** (north star 1, R12): checks prerequisites (OpenCode, `gh`, auth, `spiral-review` on `PATH`), installs the coding-agent plugin (ship procedure, `gh pr create` guard, per-turn review). Needs: hook invocation.
+- [ ] **MVP** · **Claude Code Stop hook** (D3, D4): thin adapter over the core; `hook` reviews uncommitted diff incl. untracked files; returns `{"decision":"block","reason":...}`; diff-hash guard, round cap, fail-open, verify-don't-obey instructions. Needs the findings schema and blocking rule.
+- [ ] **MVP** · **`init`** (north star 1, R12): checks prerequisites (OpenCode, `gh`, auth, `spiral-review` on `PATH`), installs the coding-agent plugin (ship procedure, `gh pr create` guard, per-turn review). Needs: hook invocation.
 - [ ] **OpenCode plugin adapter** (D3, D4): spike first — verify a plugin can send findings into the active session on `session.idle`.
 - [ ] **Reviewer isolation:** OpenCode permissions are not a sandbox (its threat model), so the read-only reviewer is best effort. Give reviewers no file tools (the diff plus files the core sends), or run OpenCode in a container or OS sandbox. Needed before reviewing untrusted PRs.
-- [ ] **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, result cache. Needs digest format and risk tiers.
+- [ ] **MVP** · **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, result cache. Needs digest format and risk tiers.
 - [ ] **Budget ledger and degradation:** per-reviewer, per-task and global budgets; degrade instead of skipping. Needs: budget units, ledger concurrency, degradation order, shared quota.
 - [ ] **`stats` and reviewer metrics:** accept/reject rates per lens and model. Needs: accept/reject protocol.
 - [ ] **Reviewer evals:** a set of diffs with confirmed bugs (from past reverts and fixes); score every prompt, model or lens change against it before keeping it ([source][anthropic-review]). `stats` measures noise; this measures recall.
 - [ ] **Single binary** (D1, optional): `bun build --compile`.
+
+### MVP milestone
+
+First usable version, used daily on this repo. Items marked **MVP** above, reduced to:
+
+- configuration: built-in defaults and `.spiral-review.toml` only;
+- risk tiers: rules only, no escalators; standard tier only (high-risk reviews like standard, plus `needs-human`);
+- `init` and integration: Claude Code only;
+- budgets: per-reviewer limits only (max steps, timeout; done in the adapter).
+
+Decide first: findings schema and blocking rule, risk tier thresholds, digest format, hook invocation, large diffs. The rest waits until MVP use shows it pays off.
 
 ## Out of scope
 
