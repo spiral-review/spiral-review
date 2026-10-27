@@ -32,6 +32,8 @@ Plans follow the pattern `NNN_short-name.md`, where `NNN` is a zero-padded seque
 ## Acceptance Criteria
 
 - [Specific, verifiable outcome]
+
+Accept: `[gate command from AGENTS.md]`
 ```
 
 ---
@@ -138,13 +140,30 @@ Sections marked **[Required]** must always be included. Sections marked **[If Ap
 - [Specific, measurable outcome 1]
 - [Specific, measurable outcome 2]
 - All tests passing
+
+## Execution [Required for Medium/Large]
+
+Gate: `[gate command from AGENTS.md]`
+
+- [ ] C01 — [One testable outcome, e.g. "A stale save returns 409"]
+      Accept: `[command that proves it, e.g. a filtered test run]`
+- [ ] C02 — [Next outcome]
+      Accept: `[command]`
 ```
+
+---
+
+## Execution Chunks
+
+- A chunk is one testable outcome, small enough for one agent session, written as a sentence that is true when it's done.
+- Each chunk has an `Accept:` command. A chunk is checked only when that command and the gate pass, with the real output in the commit or PR (see [Gate and Definition of Done](./README.md#gate-and-definition-of-done)).
+- Checking a box is progress tracking, not a change to the plan. Adding, removing or rewording a chunk after approval is an amendment.
 
 ---
 
 ## Amendment Format
 
-Implementation plans are **immutable after approval** (see [Documentation Update Policies](./README.md#documentation-update-policies)). When implementation deviates from the plan, append an **Amendments** section — do not modify the original content.
+Implementation plans are **immutable after approval** (see [Documentation Update Policies](./README.md#documentation-update-policies)), except for checking off Execution chunks. When implementation deviates from the plan, append an **Amendments** section — do not modify the original content.
 
 ```markdown
 ---
@@ -178,3 +197,4 @@ Multiple amendments are appended chronologically.
 | API Changes           | New or modified endpoints/DTOs                 |
 | Database Changes      | Schema or migration changes needed             |
 | Configuration Changes | App settings or deployment config changes      |
+| Execution             | Medium/large plans that agents carry out       |
