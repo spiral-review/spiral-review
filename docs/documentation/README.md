@@ -9,6 +9,10 @@
    2. [Design documents](#design-documents)
       1. [Architecture Decision Records (ADRs)](#architecture-decision-records-adrs)
       2. [Decision Log](#decision-log)
+4. [Agent Execution](#agent-execution)
+   1. [Gate and Definition of Done](#gate-and-definition-of-done)
+   2. [AGENTS.md](#agentsmd)
+   3. [Handover](#handover)
 
 ## Guidelines
 
@@ -16,6 +20,7 @@
   1. Technical documentation - Project specific
      - Design documents (Architecture Decision Records - ADRs and decision logs)
      - Implementation plans ([template](./plan_template.md), naming: `NNN_short-name.md`)
+     - Agent execution: `AGENTS.md` (gate, domain words) and `docs/HANDOVER.md` ([template](./handover_template.md))
   2. Pull Requests
   3. Git commits
   4. Product documentation (PRDs ([template](./prd_template.md), naming: `NNN_short-name.md`), ROADMAP.md, STRATEGY.md)
@@ -34,6 +39,7 @@ Different documentation types have different update strategies. The key principl
 | README / Usage docs                    | **Living**; update with code                                               | Must reflect current behavior                   |
 | API docs                               | **Living**; ideally auto-generated                                         | Must match actual API surface                   |
 | Decision Log                           | **Living**; update when ADRs change or other important decisions are taken | Summary document, links to immutable documents  |
+| Handover                               | **Living**; overwritten at the end of each work session                    | Lets the next session resume without re-reading |
 
 ### Why Immutable Planning Artifacts?
 
@@ -76,12 +82,14 @@ If requirements change after a plan is approved:
 
         -root
           --src
-          --docs <-- CI runs on docs too (format check)
+          --docs <-- CI runs on docs changes too
             --adr <-- Architecture Decision Records
             --prd <-- Product requirements
             --plans <-- Implementation plans
             --design <-- UX design artifacts
             --decisions.md <-- decision log document
+            --HANDOVER.md <-- current state for the next work session
+          AGENTS.md <-- gate command, domain words
           README.md
 
 ### Design documents
@@ -138,3 +146,38 @@ This ADR supersedes [ADR-XXX: Previous Title](./ADR-XXX_previous-title.md).
 - It includes links to the ADRs and salient points.
 - It uses our [Decision Log template](./decision_log_template.md).
 - We store our Decision Logs in the `docs/decisions.md` path.
+
+##### Which level a decision belongs to
+
+| Level          | Where                                | When                                                                         |
+| -------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
+| Design         | PRD or plan, before coding           | Settled up front; agents don't reopen it without the owner                   |
+| Implementation | Decision log row, no ADR             | A choice the PRD/plan doesn't cover; the agent appends it with its reasoning |
+| Architecture   | ADR + decision log row linking to it | Architecture, public API/contract behaviour, or hard-to-reverse choices      |
+
+- Agents append implementation-level rows as they work (`Made By: agent`); the owner reviews them in the PR.
+- A reversed decision gets a new row that names the one it replaces; old rows are not deleted.
+
+## Agent Execution
+
+How coding agents run plans in this project. The goal: agents can work unattended, and their "done" can be trusted without watching them.
+
+### Gate and Definition of Done
+
+- Each project has **one gate command** (build, lint, format check, every test), named in `AGENTS.md`. CI runs the same command.
+- A plan chunk or PR is done only when the gate passes, with its **real output** in the PR or commit. A summary written by the agent is not evidence.
+- **Never weaken, skip or delete a test** to make the gate pass. If a test or the gate looks wrong, stop and ask the owner.
+- Recommended: a check in the gate that fails on stub markers (e.g. `NotImplementedException`, `TODO: implement`) and on skipped tests.
+
+### AGENTS.md
+
+Besides roles and conventions, each project's `AGENTS.md` has:
+
+- **Gate**: the single command from above, plus how to run the app.
+- **Domain words**: one line per term, with words to avoid so names stay consistent. Example:
+  `- draft: the editable set of resources for one environment. Avoid: workspace, working copy.`
+
+### Handover
+
+- `docs/HANDOVER.md` ([template](./handover_template.md)) holds the current state: where we are, how to prove it, the next action, decisions not to reopen.
+- An agent reads it at the start of a session and overwrites it at the end. History lives in PRs, commits and the decision log, not here.
