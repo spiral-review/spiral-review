@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { findingsSchema } from "../../core/findings.js";
+import { reviewOutputSchema } from "../../core/findings.js";
 import { createHttpApi } from "./api.js";
 import {
   AGENT,
@@ -84,12 +84,12 @@ describe.skipIf(process.env.SPIRAL_LIVE !== "1")(
           diff,
           instructions:
             "Find real bugs. Read the imported module before judging the call.",
-          schema: findingsSchema,
+          schema: reviewOutputSchema,
           model,
           cwd: repo,
         });
         console.log(JSON.stringify(result, null, 2));
-        expect(findingsSchema.safeParse(result.output).success).toBe(true);
+        expect(reviewOutputSchema.safeParse(result.output).success).toBe(true);
         expect(result.usage.steps).toBeGreaterThan(0);
       } finally {
         await reviewer.close();
