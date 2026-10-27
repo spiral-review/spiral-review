@@ -111,6 +111,7 @@ Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 - **Ledger concurrency:** sessions in different repos may write the global ledger at the same time (file lock, SQLite?).
 - **Degradation order** when a budget is exhausted.
 - **Shared quota:** with OpenCode for coding and reviewing, how the ledger accounts for coding usage so reviews don't starve it (or vice versa).
+- **Claude Code `/code-review`:** overlaps the review step (same-model, Claude quota, user-triggered). Compare against it in reviewer evals: spiral-review earns its keep only if a second model catches bugs it misses.
 - **Same-model review:** enforce or warn when a reviewer uses the coding agent's model?
 - **Loop guards:** combine Claude Code's `stop_hook_active` input with the per-session round cap? Anthropic adds ([source][anthropic-review]): never repeat a finding already raised; after the first rounds, review only what changed since; in the last round before the cap, ask the author to reconsider the approach. At the cap, R6 applies.
 - **Outcome guardrail:** track reverts of reviewed changes, so fewer findings can't hide more escaped bugs (Anthropic's guardrail is revert and incident rates, [source][anthropic-review])?
