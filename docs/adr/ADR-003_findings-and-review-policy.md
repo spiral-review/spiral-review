@@ -22,7 +22,7 @@ The hook, `pr`, the digest, loop guards and metrics all consume findings; [plan 
 ## Decision
 
 - **D1 - Reviewer output:** `{ findings, decisions }` ([`src/core/findings.ts`](../../src/core/findings.ts)). A finding has `file`, `line`, `quote` (exact code, the evidence), `category` (fixed enum), `title` (names the bug class), `body`, optional `failureScenario`, `severity` (critical / major / minor / nit), `confidence` (high / medium / low), `preExisting`. A decision is a change needing a human call, not a fix: digest only, adds `needs-human`.
-- **D2 - Core-added fields:** `id` = `F-` + 6 hex of a hash of file, category and whitespace-normalized quote (no line, no wording, so it survives shifts and rephrasing); duplicates merge, keeping a blocking one, then the most severe. `cited` = quote found in the post-change file or the diff.
+- **D2 - Core-added fields:** `id` = `F-` + 6 hex of a hash of file, category and whitespace-normalized quote (no line, no wording, so it survives shifts and rephrasing); duplicates merge, keeping a blocking one, then the most severe. `cited` = quote (≥ 8 characters, whole tokens) found in the finding's own file: its post-change text or one of its removed hunks in the diff. Paths outside the repo are never read.
 - **D3 - Blocking rule:** not pre-existing, cited, has a failure scenario, and critical with confidence ≥ medium or major with confidence high. Only blocking findings reach the coding agent; the rest are saved under `.spiral-review/` and listed in the digest.
 - **D4 - Standard-tier noise:** no LLM verification step; D3's deterministic filters plus the coding agent's own verification (ADR-001 D4), bounded by the round cap. Revisit when more than 30% of the last 50 blocking findings are dismissed, or the digest shows real bugs dismissed; try a verify step on `pr --create` first.
 - **D5 - Rejections:** `spiral-review dismiss <id> "<reason>"` records a rejection per branch under `.spiral-review/`; dismissed IDs stop blocking and appear in the digest as rejected. Minimal subset of the accept/reject protocol.
@@ -43,6 +43,6 @@ The hook, `pr`, the digest, loop guards and metrics all consume findings; [plan 
 ## Consequences and Risks
 
 - Self-reported confidence is poorly calibrated; `stats` should calibrate it per model.
-- A reviewer quoting a different line for the same bug yields a new ID.
+- A reviewer quoting a different line for the same bug yields a new ID; distinct bugs with the same file, category and quote share one (one is merged away, and a dismissal covers both). Accepted: adding line or wording would break IDs across rounds.
 - A weak model may label noise major / high; measure with `stats` and reviewer evals before adding a verifier.
 - Truncated reviews can miss bugs in omitted files; reported, never hidden.
