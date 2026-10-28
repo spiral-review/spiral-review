@@ -91,7 +91,10 @@ Decided: [ADR-003](adr/ADR-003_findings-and-review-policy.md) and the [decision 
 
 Not planned now; to be re-evaluated later.
 
-- **Auto-merge** (e.g. trivial PRs via GitHub auto-merge). Conflicts with "the human keeps the decisions". Re-evaluate once reviewer metrics show low-risk reviews are reliable and the risk classifier is proven; opt-in only.
+- **Auto-merge** (e.g. trivial PRs via GitHub auto-merge). Conflicts with "the human keeps the decisions". Re-evaluate once reviewer metrics show low-risk reviews are reliable and the risk classifier is proven; opt-in only. Prerequisites:
+  - tier and verdict as commit statuses on the head SHA: the `needs-human` label is not bound to a commit, and anyone with write access, including the coding agent, can remove it;
+  - the merge decision stays outside spiral-review, in a GitHub required status check;
+  - findings the coding agent dismissed itself (ADR-003 D5) block auto-merge until a consolidator or the human accepts the rejection.
 
 ## Later
 
@@ -112,6 +115,7 @@ Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 - **Degradation order** when a budget is exhausted.
 - **Shared quota:** with OpenCode for coding and reviewing, how the ledger accounts for coding usage so reviews don't starve it (or vice versa).
 - **Claude Code `/code-review`:** overlaps the review step (same-model, Claude quota, user-triggered). Compare against it in reviewer evals: spiral-review earns its keep only if a second model catches bugs it misses.
+- **Background and cloud agents:** the hook and `pr --create` run where the coding agent runs. A cloud session (e.g. Claude Code on the web) lacks the user-level plugin, OpenCode and the CLI, so it fails open and opens PRs with plain `gh pr create`: no review, no digest, no `needs-human`. PRs opened while the developer's machine is off wait too. Options: a `watch` mode on an always-on machine that reviews new PRs and pushes; the GitHub Action (Later). Either way a PR without a digest must read as unreviewed, not as clear.
 - **Same-model review:** enforce or warn when a reviewer uses the coding agent's model?
 - **Loop guards:** combine Claude Code's `stop_hook_active` input with the per-session round cap? Anthropic adds ([source][anthropic-review]): never repeat a finding already raised; after the first rounds, review only what changed since; in the last round before the cap, ask the author to reconsider the approach. At the cap, R6 applies.
 - **Outcome guardrail:** track reverts of reviewed changes, so fewer findings can't hide more escaped bugs (Anthropic's guardrail is revert and incident rates, [source][anthropic-review])?
