@@ -52,6 +52,17 @@ sensitive = ["billing/**"]   # added to the built-in sensitive paths
 
 Unit tests: defaults with no file; full file; unknown key, wrong type, bad model and TOML syntax errors name the key or line; default instructions missing → empty; explicit instructions missing → error; absolute, `..` and symlink-escaping instructions paths rejected.
 
+## Acceptance Criteria
+
+Each is covered by `src/core/config.test.ts`:
+
+- No config file and no `REVIEW.md`: built-in defaults and empty instructions.
+- Every setting in the example above is read; keys a table leaves out keep their defaults.
+- `REVIEW.md` is read by default; `instructions` points to another file, and a missing explicit file is an error.
+- Unknown keys, wrong types, out-of-range numbers and a model not in `provider/model` form raise `ConfigError` naming the key; TOML syntax errors name the line; an unreadable config file raises `ConfigError`.
+- Absolute, `..` and symlinked instructions paths outside the repo are rejected; symlinks inside the repo are followed.
+- All tests passing.
+
 ## Execution
 
 Gate: `pnpm check && pnpm build`

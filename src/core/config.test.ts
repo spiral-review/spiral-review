@@ -67,7 +67,11 @@ sensitive = ["billing/**"]
       /inside the repo/,
     ],
     ["escaping instructions", 'instructions = "../x.md"', /inside the repo/],
-    ["TOML syntax", "gates = [", /\.spiral-review\.toml: .*unfinished array/],
+    [
+      "TOML syntax",
+      "gates = []\nskip = [",
+      /\.spiral-review\.toml: [^]*^2: {2}skip/m,
+    ],
   ])("rejects %s", (_name, text, message) => {
     const run = () => parseConfig(text);
     expect(run).toThrow(ConfigError);
@@ -144,6 +148,13 @@ describe("loadConfig", () => {
     await writeFile(join(root, "AGENTS.md"), "Shared.");
     await symlink("AGENTS.md", join(root, "REVIEW.md"));
     expect((await loadConfig(root)).instructions).toBe("Shared.");
+  });
+
+  it("reports an unreadable config file as ConfigError", async () => {
+    await mkdir(join(root, ".spiral-review.toml"));
+    await expect(loadConfig(root)).rejects.toThrow(
+      /\.spiral-review\.toml: .*EISDIR/,
+    );
   });
 
   it("reports invalid config as ConfigError", async () => {
