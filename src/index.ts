@@ -9,6 +9,7 @@ export const VERSION: string = pkg.version;
 
 export * from "./core/reviewer.js";
 export * from "./core/findings.js";
+export * from "./core/config.js";
 export {
   createOpencodeReviewer,
   type OpencodeReviewerOptions,
