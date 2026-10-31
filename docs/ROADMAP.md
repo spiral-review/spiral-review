@@ -17,7 +17,7 @@ flowchart LR
     D -- changes --> C
 ```
 
-1. **Set up once.** `spiral-review init` checks prerequisites (OpenCode, `gh`, auth) and installs the coding-agent integration: the per-turn review, the ship procedure and the `gh pr create` guard (R12). Works with defaults; repo config is optional.
+1. **Set up once.** `spiral-review init` checks prerequisites (OpenCode, `gh`, auth) and installs the coding-agent integration: the per-turn review, the ship procedure and the `gh pr create` guard (R12). Works with defaults; repo config is optional (R13). Scriptable, so a personal setup tool or a cloud machine's setup script can run it (R14).
 2. **Code.** You only talk to the agent. After each turn the integration runs gates and, if the change is not trivial, a standard review of the uncommitted changes. Blocking findings go to the agent, which fixes or rejects them with reasons. You see one status line, nothing more.
 3. **Ship.** You tell the agent to ship (or type `/ship`); the installed ship procedure makes it run `spiral-review pr --create`. That reviews the whole branch against its base at the tier of the branch diff (gauntlet if high-risk).
    - Blocking findings: no PR is opened; the command prints them, saves them to `.spiral-review/`, exits non-zero. The agent fixes and reruns.
@@ -31,7 +31,7 @@ flowchart LR
 - **R2 - Findings never need a human relay:** they reach the coding agent through the integration or through command output it reads. Exception: only blocking findings are sent; the rest go to the digest (ADR-003 D3).
 - **R3 - Quiet when fine:** a passing review is one status line.
 - **R4 - Fast inner loop:** the per-turn hook runs only gates and the standard tier; the gauntlet runs only in `pr --create` / `review`.
-- **R5 - Agent-runnable commands:** machine-readable output, non-zero exit on blocking findings, results saved under `.spiral-review/` (gitignored).
+- **R5 - Agent-runnable commands:** machine-readable output, non-zero exit on blocking findings, results saved under `.spiral-review/`, never committed (R13).
 - **R6 - Bounded:** round caps end every loop; after the cap, the decision moves to the human via the digest.
 - **R7 - Never fail closed:** reviewer errors, timeouts and budget degradation are reported in one line and in the digest; work is never blocked by spiral-review failing.
 - **R8 - No double spend:** results are cached by diff hash; re-running on an unchanged diff costs no quota.
@@ -52,6 +52,9 @@ flowchart LR
 
   The plugins only call the CLI; logic stays in the core (ADR-001 D7).
 
+- **R13 - No trace in repos you don't own:** spiral-review works fully in a repo you only contribute to without writing anything it would commit: personal settings and per-repo settings live in user-level config, and `.spiral-review/` is excluded through `.git/info/exclude`, not `.gitignore`.
+- **R14 - Scriptable setup:** `init` runs non-interactively (all answers as flags) and is idempotent, so an external setup tool or a fresh cloud machine can install the integration with one command.
+
 ## Planned work
 
 In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_general-design.md). "Needs" lists open questions to decide first.
@@ -63,7 +66,8 @@ In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_gene
 - [ ] **MVP** · **Risk tier classifier:** trivial / standard / high-risk from the diff. Deterministic rules set the minimum tier; optional escalators (e.g. a learned classifier) run after them and can only raise it, each with a reason saved with the results. Thresholds: [decision log](decisions.md).
 - [ ] **MVP** · **`review`, standard tier:** one reviewer, one round, findings and verdict from the core ([ADR-003](adr/ADR-003_findings-and-review-policy.md)).
 - [ ] **MVP** · **Claude Code Stop hook** (D3, D4): thin adapter over the core; `hook` reviews uncommitted diff incl. untracked files; returns `{"decision":"block","reason":...}`; diff-hash guard, round cap, fail-open, verify-don't-obey instructions; sends only blocking findings (ADR-003 D3).
-- [ ] **MVP** · **`init`** (north star 1, R12): checks prerequisites (OpenCode, `gh`, auth, `spiral-review` on `PATH`), asks for the reviewer model (no built-in default), installs the coding-agent plugin (ship procedure, `gh pr create` guard, per-turn review); hook invocation in the [decision log](decisions.md).
+- [ ] **MVP** · **User-level config** (D6, R13): `~/.config/spiral-review/config.toml` for personal settings and per-repo entries for repos without a `.spiral-review.toml`. Needs: [repo-level config](#open-questions) decided, then an ADR superseding D6.
+- [ ] **MVP** · **`init`** (north star 1, R12, R14): checks prerequisites (OpenCode, `gh`, auth, `spiral-review` on `PATH`), asks for the reviewer model (no built-in default) or takes it as a flag, writes it to user-level config, installs the coding-agent plugin (ship procedure, `gh pr create` guard, per-turn review); hook invocation in the [decision log](decisions.md).
 - [ ] **MVP** · **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, result cache; digest format in the [decision log](decisions.md).
 - [ ] **MVP** · **`dismiss`** (ADR-003 D5): `spiral-review dismiss <id> "<reason>"` records a rejection per branch; dismissed IDs stop blocking and show as rejected in the digest.
 - [ ] **Reviewer evals:** a set of diffs with confirmed bugs (from past reverts and fixes); score every prompt, model or lens change against it before keeping it ([source][anthropic-review]). `stats` measures noise; this measures recall.
@@ -78,7 +82,7 @@ In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_gene
 
 First usable version, used daily on this repo. Items marked **MVP** above, reduced to:
 
-- configuration: built-in defaults, `.spiral-review.toml` and the instructions file; no user-level config;
+- configuration: built-in defaults, user-level config, `.spiral-review.toml` and the instructions file;
 - risk tiers: rules only, no escalators;
 - standard tier only: high-risk changes get the standard review plus `needs-human`. Temporary exception to R10 and north star 3, until the gauntlet lands;
 - `init` and integration: Claude Code only. R11 is deferred, not dropped: the core stays agent-neutral (D7).
@@ -107,6 +111,11 @@ Follow-ups with a known trigger.
 
 Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 
+- **Repo-level config:** keep `.spiral-review.toml` at all, now that spiral-review must work in repos you don't own (R13)? Leaning: keep it, split by whose setting it is.
+  - Personal (`[review]`: model, diff size, nit cap): user-level only. Quotas belong to the account, not the repo (ADR-001); a repo must not pick the model that spends your quota.
+  - Repo facts (`gates`, `skip`, `[tiers]`, instructions file): `.spiral-review.toml` in repos you own, or a user-level entry for the repo; the user-level entry wins.
+  - Why keep the repo file: it travels with the repo to cloud machines and the GitHub Action, and edits to it are in the diff, so the tier rules flag an agent weakening its own review. User-level config is outside the diff: the guard must block agent writes to it, and the digest names the config source.
+  - Unverified: keying user-level entries (normalized remote URL, path fallback); whether gate autodetection (e.g. `package.json` scripts) makes most per-repo entries unnecessary.
 - **Learned escalator:** e.g. TypeSafe's Jev (calibrated yes/no, label and score answers). Unverified: whether it runs locally (a hosted API sends the diff to another vendor and needs its own key), licensing for an npm CLI, accuracy (measure with reviewer evals first).
 - **Security pass:** a separate security review on the standard tier too (Anthropic runs one on every PR, and its findings block), or only the gauntlet's security lens?
 - **Accept/reject protocol:** how the coding agent reports per-finding accepted/rejected/fixed by finding ID. Reviewer metrics depend on it. Leaning: four outcomes, fixed / wrong / intentional / doesn't matter ([source][anthropic-review]); "doesn't matter" marks noisy lenses. The MVP's `dismiss` (ADR-003 D5) is the first subset.
