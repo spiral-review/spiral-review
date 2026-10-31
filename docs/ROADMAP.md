@@ -37,18 +37,18 @@ flowchart LR
 - **R8 - No double spend:** results are cached by diff hash; re-running on an unchanged diff costs no quota.
 - **R9 - One digest per PR,** updated in place.
 - **R10 - Humans own every merge:** high-risk changes get the full review within budget without asking first. `needs-human` is added when the PR is high-risk, lists changes needing a human decision, or has unresolved findings (R6). It means "read the digest carefully", not "only these need a human". No auto-merge (see [Out of scope](#out-of-scope)).
-- **R11 - Same flow on every coding agent** (Claude Code, OpenCode).
+- **R11 - Same flow on every coding agent** (Claude Code, OpenCode, Codex).
 - **R12 - Agent behavior is installed, not instructed:** the user never writes prompts or rules to make the agent follow this flow. `init` installs, per coding agent:
   - **Ship procedure:** run `spiral-review pr --create`; on non-zero exit, read the findings, fix each or reject it with `spiral-review dismiss <id> "<reason>"`, rerun; when the PR opens, report link and tier.
   - **Guard:** a pre-tool hook blocks `gh pr create` (and equivalents) and points the agent to `spiral-review pr --create`. Deterministic: works even if the agent ignores the procedure.
-  - **Per-turn review:** the Stop hook (Claude Code) or `session.idle` plugin (OpenCode).
+  - **Per-turn review:** the Stop hook (Claude Code, Codex) or `session.idle` plugin (OpenCode).
 
-  |                 | Claude Code                | OpenCode                                                 |
-  | --------------- | -------------------------- | -------------------------------------------------------- |
-  | Packaging       | one plugin (skill + hooks) | one plugin (+ command)                                   |
-  | Ship procedure  | skill `ship`, also `/ship` | custom command or `AGENTS.md` (skill support unverified) |
-  | Guard           | `PreToolUse` hook          | `tool.execute.before`                                    |
-  | Per-turn review | `Stop` hook                | `session.idle` event (spike)                             |
+  |                 | Claude Code                | OpenCode                                                 | Codex                                       |
+  | --------------- | -------------------------- | -------------------------------------------------------- | ------------------------------------------- |
+  | Packaging       | one plugin (skill + hooks) | one plugin (+ command)                                   | one plugin (skill + hooks)                  |
+  | Ship procedure  | skill `ship`, also `/ship` | custom command or `AGENTS.md` (skill support unverified) | skill `ship`                                |
+  | Guard           | `PreToolUse` hook          | `tool.execute.before`                                    | `PreToolUse` hook (Bash only)               |
+  | Per-turn review | `Stop` hook                | `session.idle` event (spike)                             | `Stop` hook (spike; hooks are experimental) |
 
   The plugins only call the CLI; logic stays in the core (ADR-001 D7).
 
@@ -71,8 +71,10 @@ In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_gene
 - [ ] **MVP** · **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, result cache; digest format in the [decision log](decisions.md).
 - [ ] **MVP** · **`dismiss`** (ADR-003 D5): `spiral-review dismiss <id> "<reason>"` records a rejection per branch; dismissed IDs stop blocking and show as rejected in the digest.
 - [ ] **Reviewer evals:** a set of diffs with confirmed bugs (from past reverts and fixes); score every prompt, model or lens change against it before keeping it ([source][anthropic-review]). `stats` measures noise; this measures recall.
+- [ ] **Codex reviewer adapter** (D2): a second model family behind the `Reviewer` interface, e.g. a GPT reviewer for Claude Code users on a ChatGPT plan. `codex exec --output-schema` returns schema-checked JSON ([source][codex-exec]); a read-only sandbox may cover reviewer isolation for this backend. Needs: ChatGPT-plan terms for automated use; score it with reviewer evals.
 - [ ] **Gauntlet and consolidator:** lens fan-out, optionally on different models; consolidator merges, verifies, drops false positives.
 - [ ] **OpenCode plugin adapter** (D3, D4): spike first — verify a plugin can send findings into the active session on `session.idle`.
+- [ ] **Codex integration** (D3, D4): plugin with `PreToolUse` guard and `Stop` per-turn review. Spike first — hooks are behind a feature flag; verify `Stop` can block the turn and send findings to the agent.
 - [ ] **Reviewer isolation:** OpenCode permissions are not a sandbox (its threat model), so the read-only reviewer is best effort. Give reviewers no file tools (the diff plus files the core sends), or run OpenCode in a container or OS sandbox. Needed before reviewing untrusted PRs.
 - [ ] **Budget ledger and degradation:** per-reviewer, per-task and global budgets; degrade instead of skipping. Needs: budget units, ledger concurrency, degradation order, shared quota.
 - [ ] **`stats` and reviewer metrics:** accept/reject rates per lens and model. Needs: accept/reject protocol.
@@ -105,7 +107,7 @@ Not planned now; to be re-evaluated later.
 Follow-ups with a known trigger.
 
 - **TypeScript 7:** move from 6.0 once typescript-eslint supports it ([#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)).
-- **GitHub Action** wrapping the CLI (ADR-001 D5). Check OpenCode Go terms first.
+- **GitHub Action** wrapping the CLI (ADR-001 D5). Check OpenCode Go and Codex ChatGPT-plan terms first.
 
 ## Open questions
 
@@ -128,6 +130,7 @@ Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 - **Same-model review:** enforce or warn when a reviewer uses the coding agent's model?
 - **Loop guards:** combine Claude Code's `stop_hook_active` input with the per-session round cap? Anthropic adds ([source][anthropic-review]): never repeat a finding already raised; after the first rounds, review only what changed since; in the last round before the cap, ask the author to reconsider the approach. At the cap, R6 applies.
 - **Outcome guardrail:** track reverts of reviewed changes, so fewer findings can't hide more escaped bugs (Anthropic's guardrail is revert and incident rates, [source][anthropic-review])?
-- **OpenCode Go terms:** whether automated use is allowed (relevant before any CI).
+- **Subscription terms:** whether OpenCode Go and ChatGPT plans (Codex) allow automated use. OpenAI recommends API keys for CI and ChatGPT auth only on trusted runners ([source][codex-exec]); relevant before any CI.
 
 [anthropic-review]: https://claude.dev/blog/solving-code-review-at-anthropic/
+[codex-exec]: https://developers.openai.com/codex/noninteractive
