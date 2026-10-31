@@ -1,10 +1,10 @@
 # Handover
 
-Updated: 2026-10-30, after [plan 002](plans/002_configuration.md) (configuration)
+Updated: 2026-10-31, after PRs #15–#17 (source-control guide; roadmap: user-level config, Codex)
 
 ## Where we are
 
-Scaffold, OpenCode reviewer adapter, findings core and configuration are done. `src/core/config.ts` loads `.spiral-review.toml` over defaults and the instructions file (`REVIEW.md` by default). No CLI command uses them yet.
+Scaffold, OpenCode reviewer adapter, findings core and configuration are done. `src/core/config.ts` loads `.spiral-review.toml` over defaults and the instructions file (`REVIEW.md` by default). No CLI command uses them yet. Roadmap direction since: user-level config before `init` (R13, R14), and Codex as reviewer adapter and integration after the MVP.
 
 ## Prove it
 
@@ -29,4 +29,5 @@ Roadmap MVP item **Risk tier classifier** (rules from the [decision log](decisio
 
 ## Open questions
 
+- **Repo-level config** (roadmap): if decided as leaning, the `[review]` table moves to user-level config. Don't build new code on `review.model` in `.spiral-review.toml`; the classifier is unaffected.
 - See [roadmap open questions](ROADMAP.md#open-questions).
