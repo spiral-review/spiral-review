@@ -35,6 +35,6 @@ Which loop a changed file belongs to, so spiral-review can classify a PR. A PR's
 | Feature   | `**/docs/prd/**`, `**/docs/plans/**`, `**/docs/design/**`, `**/docs/decisions.md` |
 | Execution | everything else                                                                   |
 
-Exception: a change to `docs/decisions.md` that only appends `Made By: agent` rows is execution. Editing or removing a row, or adding one made by the owner, is feature.
+Exception: a change to `docs/decisions.md` that only appends `Made By: agent` rows is execution. Editing or removing a row, adding one made by the owner, or adding one that replaces an earlier row ("Replaces: …") is feature.
 
 Classification, tiers, escalators and the merge policy live in spiral-review (its PRD-001); only this convention lives here.
