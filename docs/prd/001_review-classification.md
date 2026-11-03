@@ -1,6 +1,6 @@
 # PRD-001: Change classification, escalators and merge policy
 
-**Status**: Draft
+**Status**: Approved
 **Date**: 2026-11-03
 **Author**: Luca Dalla Valle
 
