@@ -76,8 +76,8 @@ spiral-review records which findings the coding agent accepts or rejects, per le
 - **CLI:** TypeScript, distributed via npm (`npx spiral-review`), possibly also as a single binary via `bun build --compile`.
 - **Reviewer runners** behind an adapter interface. First adapter: [OpenCode](https://opencode.ai) via its official SDK `@opencode-ai/sdk` (server + client, sessions, per-prompt model selection, event stream, structured output with JSON Schema). Findings come back as typed JSON, not parsed Markdown. Other harnesses can be added later.
 - **Core as a library:** an agent-neutral core with a programmatic API; the CLI and coding-agent integrations are thin adapters.
-- **Claude Code integration:** a Stop hook. When the agent finishes a turn, spiral-review reviews the uncommitted diff. If the verdict is blocking, findings go back to the agent, which verifies them, fixes the valid ones and explains the rejected ones, in the same session. Loop guards: skip when the diff is unchanged; cap consecutive blocking rounds.
-- **OpenCode integration (later):** a plugin with the same loop, for users who code with OpenCode.
+- **Claude Code integration:** a Stop hook. When the agent finishes a turn, spiral-review reviews the uncommitted diff. If the verdict is blocking, findings go back to the agent, which verifies them, fixes the valid ones and explains the rejected ones, in the same session. Round guards: skip when the diff is unchanged; cap consecutive blocking rounds.
+- **OpenCode integration (later):** a plugin with the same per-turn review, for users who code with OpenCode.
 - **GitHub integration:** `spiral-review pr` runs locally, reviews the PR diff against its base branch, posts the digest as a PR comment via `gh`, and adds a `needs-human` label for high-risk changes. Keys and quota stay on your machine. A GitHub Action wrapping the same CLI may come later.
 - **Configuration layering:** built-in defaults < user config (`~/.config/spiral-review`) < repo config (`.spiral-review.toml`). `REVIEW.md` (path configurable) adds free-text instructions to every reviewer prompt. Built-in lens prompts can be overridden per repo.
 

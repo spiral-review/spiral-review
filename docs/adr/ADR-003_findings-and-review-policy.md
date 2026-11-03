@@ -15,7 +15,7 @@
 
 ## Context
 
-The hook, `pr`, the digest, loop guards and metrics all consume findings; [plan 001](../plans/001_opencode-adapter.md) used a throwaway schema. With an agent author, every blocking false positive costs a round, and the MVP runs one unverified reviewer per review.
+The hook, `pr`, the digest, round guards and metrics all consume findings; [plan 001](../plans/001_opencode-adapter.md) used a throwaway schema. With an agent author, every blocking false positive costs a round, and the MVP runs one unverified reviewer per review.
 
 <a id="decision"></a>
 
