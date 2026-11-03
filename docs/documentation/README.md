@@ -16,14 +16,15 @@
 
 ## Guidelines
 
+- How work flows through the strategy, feature and execution loops: [development process](./development_process.md).
 - There are different types of documentation:
   1. Technical documentation - Project specific
      - Design documents (Architecture Decision Records - ADRs and decision logs)
      - Implementation plans ([template](./plan_template.md), naming: `NNN_short-name.md`)
      - Agent execution: `AGENTS.md` (gate, domain words) and `docs/HANDOVER.md` ([template](./handover_template.md))
-  2. Pull Requests
-  3. Git commits
-  4. Product documentation (PRDs ([template](./prd_template.md), naming: `NNN_short-name.md`), ROADMAP.md, STRATEGY.md)
+  2. Source control: branching, merging, PRs and commits ([rules](./source_control.md))
+  3. Product documentation (PRDs ([template](./prd_template.md), naming: `NNN_short-name.md`), ROADMAP.md, STRATEGY.md)
+- `docs/documentation/` is a read-only copy of the common documentation, kept in sync by `agentfiles doctor --fix` (source of truth: the agentfiles repo). Never edit it in a project: record where the project deviates in `docs/decisions.md`, or change the common documentation in agentfiles.
 
 ## Documentation Update Policies
 
@@ -74,7 +75,7 @@ If requirements change after a plan is approved:
     - [Design Decision Log](https://microsoft.github.io/code-with-engineering-playbook/design/design-reviews/decision-log/) link
     - Contributing
       - Coding conventions
-      - Source control documentation (branching/merging strategy)
+      - Source control documentation (branching/merging strategy): [common rules](./source_control.md)
   - Design documents
     - [Architecture Decision Records](https://adr.github.io/) (including the High-level architecture overview, see below).
     - [Design Decision Log](https://microsoft.github.io/code-with-engineering-playbook/design/design-reviews/decision-log/) document (see below).
@@ -155,7 +156,7 @@ This ADR supersedes [ADR-XXX: Previous Title](./ADR-XXX_previous-title.md).
 | Implementation | Decision log row, no ADR             | A choice the PRD/plan doesn't cover; the agent appends it with its reasoning |
 | Architecture   | ADR + decision log row linking to it | Architecture, public API/contract behaviour, or hard-to-reverse choices      |
 
-- Agents append implementation-level rows as they work (`Made By: agent`); the owner reviews them in the PR.
+- Agents append implementation-level rows as they work (`Made By: agent`); the owner reviews them after merge, in the decision log.
 - A reversed decision gets a new row that names the one it replaces; old rows are not deleted.
 
 ## Agent Execution

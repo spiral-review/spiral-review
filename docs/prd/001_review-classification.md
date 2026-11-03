@@ -6,7 +6,7 @@
 
 ## Problem
 
-The risk tier treats "docs-only" as trivial ([decision log](../decisions.md), risk tiers). Under the three-loop development process (strategy, feature, execution: agentfiles common documentation), a docs-only PR is often a roadmap, ADR, PRD or plan: the changes that most need a human. Owners also need stricter repo-specific checks than built-in rules and globs, a learned classifier (e.g. Jev, [open question](../ROADMAP.md#open-questions)) as an optional extra signal, and later opt-in auto-merge of low-risk work, without the coding agent ever being able to lower its own review.
+The risk tier treats "docs-only" as trivial ([decision log](../decisions.md), risk tiers). Under the three-loop development process (strategy, feature, execution: [development process](../documentation/development_process.md)), a docs-only PR is often a roadmap, ADR, PRD or plan: the changes that most need a human. Owners also need stricter repo-specific checks than built-in rules and globs, a learned classifier (e.g. Jev, [open question](../ROADMAP.md#open-questions)) as an optional extra signal, and later opt-in auto-merge of low-risk work, without the coding agent ever being able to lower its own review.
 
 ## Goals
 
@@ -28,7 +28,7 @@ The risk tier treats "docs-only" as trivial ([decision log](../decisions.md), ri
 - [ROADMAP](../ROADMAP.md): Change classifier (MVP), Escalators, Later (Auto-merge), Open questions (Learned escalator, Repo-level config).
 - [Decision log](../decisions.md): risk tier rules.
 - [ADR-001](../adr/ADR-001_general-design.md) D5, D6, D7; [ADR-003](../adr/ADR-003_findings-and-review-policy.md) D5 (dismissals), D6 (large diffs).
-- agentfiles common documentation: `docs/documentation/development_process.md`, sections "Loop of a path" and "Feedback to an earlier loop". It owns the loop convention; spiral-review's built-in defaults copy it.
+- [Development process](../documentation/development_process.md) (agentfiles common documentation), sections "Loop of a path" and "Feedback to an earlier loop". It owns the loop convention; spiral-review's built-in defaults copy it.
 
 ## Domain Concepts
 

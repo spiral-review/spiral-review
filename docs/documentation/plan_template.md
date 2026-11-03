@@ -149,6 +149,7 @@ Gate: `[gate command from AGENTS.md]`
       Accept: `[command that proves it, e.g. a filtered test run]`
 - [ ] C02 — [Next outcome]
       Accept: `[command]`
+      Depends: C01
 ```
 
 ---
@@ -157,6 +158,8 @@ Gate: `[gate command from AGENTS.md]`
 
 - A chunk is one testable outcome, small enough for one agent session, written as a sentence that is true when it's done.
 - Each chunk has an `Accept:` command. A chunk is checked only when that command and the gate pass, with the real output in the commit or PR (see [Gate and Definition of Done](./README.md#gate-and-definition-of-done)).
+- A chunk is done in one PR. A chunk that needs others first has a `Depends:` line listing them; without it, it can start at once.
+- Chunks without a dependency path between them must touch disjoint files; otherwise add a dependency.
 - Checking a box is progress tracking, not a change to the plan. Adding, removing or rewording a chunk after approval is an amendment.
 
 ---
