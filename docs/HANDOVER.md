@@ -17,9 +17,13 @@ None.
 
 ## Next action
 
-1. Merge PR #19 (PRD-001).
-2. Draft and grill PRD-002 (prompt below).
-3. Plan for the MVP **Change classifier** (PRD-001, MVP scope); thresholds, extra sensitive globs and skip globs come from `Config`; `.spiral-review.toml` and `LoadedConfig.instructionsPath` are sensitive paths; check the built-in sensitive globs cover `.claude/**`, `.opencode/**`, `.codex/**`.
+1. Owner reviews and merges PR #19 (PRD-001); set its status to Approved in the merge.
+2. agentfiles PR #18 (`development_process.md`): replace the loop-to-paths "Open" item with the PRD-001 defaults (strategy `**/docs/adr/**`, `**/ROADMAP.md`, `**/STRATEGY.md`; feature `**/docs/prd/**`, `**/docs/plans/**`, `**/docs/design/**`, `**/docs/decisions.md`) and point the classification item to PRD-001.
+3. Draft and grill PRD-002 docs review (prompt below); merge it.
+4. Plan 003 for the MVP **Change classifier** (PRD-001 MVP scope, ACs except AC4–AC7), then plan review, then execution. Thresholds, extra sensitive globs and skip globs come from `Config`; `.spiral-review.toml` and `LoadedConfig.instructionsPath` are sensitive paths; check the built-in sensitive globs cover `.claude/**`, `.opencode/**`, `.codex/**`; an `escalators` key stays a `ConfigError`.
+5. Plan and execute the MVP **Docs review** (PRD-002).
+6. Continue the ROADMAP MVP items in order: deterministic gates, `review` standard tier, Claude Code Stop hook, user-level config (needs the repo-level config decision), `init`, `pr` and `pr --create` (with the two commit statuses), `dismiss`.
+7. After the MVP: Escalators (ADR-004 for protocol v1 first), then the merge policy PRD once its prerequisites hold.
 
 ### PRD-002 creation prompt
 
