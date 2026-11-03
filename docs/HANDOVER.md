@@ -1,6 +1,6 @@
 # Handover
 
-Updated: 2026-11-03, PR #20 merged (common documentation synced from agentfiles)
+Updated: 2026-11-03, stale `docs/source-control/` removed
 
 ## Where we are
 
@@ -17,13 +17,12 @@ None.
 
 ## Next action
 
-1. Remove the stale `docs/source-control/` (older copy of `documentation/source_control.md`; says `main` is unprotected, but the "Protect main" ruleset is active) and point `CONTRIBUTING.md` and `README.md` at `docs/documentation/source_control.md`.
-2. Draft and grill PRD-002 docs review (prompt below); merge it.
-3. Plan 003 for the MVP **Change classifier** (PRD-001 MVP scope, ACs except AC4–AC7), then plan review, then execution. Thresholds, extra sensitive globs and skip globs come from `Config`; `.spiral-review.toml` and `LoadedConfig.instructionsPath` are sensitive paths; check the built-in sensitive globs cover `.claude/**`, `.opencode/**`, `.codex/**`; an `escalators` key stays a `ConfigError`.
-4. Plan and execute the MVP **Docs review** (PRD-002).
-5. Continue the ROADMAP MVP items in order: deterministic gates, `review` standard tier, Claude Code Stop hook, user-level config (needs the repo-level config decision), `init`, `pr` and `pr --create` (with the two commit statuses), `dismiss`.
-6. After the MVP: review [ADR-004](adr/ADR-004_escalator-protocol.md) (escalator protocol v1, Proposed) against a concrete escalator (e.g. Jev); accept it (status Accepted, decision log row linking it, `Made By` owner) or revise; then build Escalators.
-7. Then the merge policy PRD once its prerequisites hold.
+1. Draft and grill PRD-002 docs review (prompt below); merge it.
+2. Plan 003 for the MVP **Change classifier** (PRD-001 MVP scope, ACs except AC4–AC7), then plan review, then execution. Thresholds, extra sensitive globs and skip globs come from `Config`; `.spiral-review.toml` and `LoadedConfig.instructionsPath` are sensitive paths; check the built-in sensitive globs cover `.claude/**`, `.opencode/**`, `.codex/**`; an `escalators` key stays a `ConfigError`.
+3. Plan and execute the MVP **Docs review** (PRD-002).
+4. Continue the ROADMAP MVP items in order: deterministic gates, `review` standard tier, Claude Code Stop hook, user-level config (needs the repo-level config decision), `init`, `pr` and `pr --create` (with the two commit statuses), `dismiss`.
+5. After the MVP: review [ADR-004](adr/ADR-004_escalator-protocol.md) (escalator protocol v1, Proposed) against a concrete escalator (e.g. Jev); accept it (status Accepted, decision log row linking it, `Made By` owner) or revise; then build Escalators.
+6. Then the merge policy PRD once its prerequisites hold.
 
 ### PRD-002 creation prompt
 
