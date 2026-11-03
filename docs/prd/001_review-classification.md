@@ -32,14 +32,14 @@ The risk tier treats "docs-only" as trivial ([decision log](../decisions.md), ri
 
 ## Domain Concepts
 
-| Term         | Meaning                                                                                                                                                                              |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| kind         | docs (only documentation paths changed), code (none), mixed                                                                                                                          |
-| loop         | strategy (ADRs, `ROADMAP.md`, `STRATEGY.md`), feature (PRDs, plans, designs, decision log edits), execution (everything else, including appended `Made By: agent` decision log rows) |
-| escalator    | a command or function that reads the classification and the diff and may only raise the tier or add `needs-human`                                                                    |
-| merge policy | the owner's opt-in rules over the classification and verdict that say whether a PR may merge without a human; evaluated by spiral-review, enforced by GitHub                         |
+| Term         | Meaning                                                                                                                                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| kind         | docs (only documentation paths changed), code (none), mixed                                                                                                                                                      |
+| loop         | strategy (ADRs, `ROADMAP.md`, `STRATEGY.md`), feature (PRDs, plans, designs, decision log edits), execution (everything else, including appended `Made By: agent` decision log rows that replace no earlier row) |
+| escalator    | a command or function that reads the classification and the diff and may only raise the tier or add `needs-human`                                                                                                |
+| merge policy | the owner's opt-in rules over the classification and verdict that say whether a PR may merge without a human; evaluated by spiral-review, enforced by GitHub                                                     |
 
-Precedence: kind comes from paths; loop comes from paths plus one content rule, both deterministic: a change to `docs/decisions.md` that only appends `Made By: agent` rows is execution, while editing or removing a row, or adding one not made by `agent`, is feature. Rows are compared by trimmed cell content, since formatters realign the whole table. The highest loop among changed files wins; escalators never change kind or loop. Tier: built-in rules set the minimum, escalators run after and only raise (as in the ROADMAP).
+Precedence: kind comes from paths; loop comes from paths plus one content rule, both deterministic: a change to `docs/decisions.md` that only appends `Made By: agent` rows is execution, while editing or removing a row, adding one not made by `agent`, or adding one that replaces an earlier row (`Replaces: …` in **Reasoning**), is feature. Rows are compared by trimmed cell content, since formatters realign the whole table. The highest loop among changed files wins; escalators never change kind or loop. Tier: built-in rules set the minimum, escalators run after and only raise (as in the ROADMAP).
 
 Tier rules by kind and loop (minimums, on top of the existing sensitive-path, size and weakened-test rules):
 
@@ -67,15 +67,15 @@ Classification (saved under `.spiral-review/`, in the digest, and as commit stat
 
 Config (`[tiers]` table, alongside `max_lines`, `max_files`, `sensitive`):
 
-| Field                     | Type   | Required | Notes                                                                                                                                                                        |
-| ------------------------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `loops.strategy`          | glob[] | no       | added to the defaults `**/docs/adr/**`, `**/ROADMAP.md`, `**/STRATEGY.md`                                                                                                    |
-| `loops.feature`           | glob[] | no       | added to the defaults `**/docs/prd/**`, `**/docs/plans/**`, `**/docs/design/**`, `**/docs/decisions.md` (except a change that only appends `Made By: agent` rows: execution) |
-| `docs`                    | glob[] | no       | paths counted as documentation; added to the defaults `**/*.md`, `**/*.markdown`, `**/*.rst`, `**/*.adoc` (not `docs/**`, `.mdx`, `.txt`)                                    |
-| `escalators[].name`       | string | yes      | shown in reasons                                                                                                                                                             |
-| `escalators[].command`    | string | yes      | run in the repo root, like gates; configured where gates are (`.spiral-review.toml` or a user-level per-repo entry, user-level wins)                                         |
-| `escalators[].paths`      | glob[] | no       | the escalator's dependencies (modules, model or config files); sensitive paths                                                                                               |
-| `escalators[].timeout_ms` | int    | no       | default 10000 (runs in the per-turn hook, R4)                                                                                                                                |
+| Field                     | Type   | Required | Notes                                                                                                                                                                                                 |
+| ------------------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `loops.strategy`          | glob[] | no       | added to the defaults `**/docs/adr/**`, `**/ROADMAP.md`, `**/STRATEGY.md`                                                                                                                             |
+| `loops.feature`           | glob[] | no       | added to the defaults `**/docs/prd/**`, `**/docs/plans/**`, `**/docs/design/**`, `**/docs/decisions.md` (except a change that only appends `Made By: agent` rows replacing no earlier row: execution) |
+| `docs`                    | glob[] | no       | paths counted as documentation; added to the defaults `**/*.md`, `**/*.markdown`, `**/*.rst`, `**/*.adoc` (not `docs/**`, `.mdx`, `.txt`)                                                             |
+| `escalators[].name`       | string | yes      | shown in reasons                                                                                                                                                                                      |
+| `escalators[].command`    | string | yes      | run in the repo root, like gates; configured where gates are (`.spiral-review.toml` or a user-level per-repo entry, user-level wins)                                                                  |
+| `escalators[].paths`      | glob[] | no       | the escalator's dependencies (modules, model or config files); sensitive paths                                                                                                                        |
+| `escalators[].timeout_ms` | int    | no       | default 10000 (runs in the per-turn hook, R4)                                                                                                                                                         |
 
 ## Validation Rules
 
@@ -131,8 +131,8 @@ Invalid config is a `ConfigError`, as today.
 - Config can only add loop and docs globs, never remove a default: removing one would lower review.
 - Agent-config Markdown (`AGENTS.md`, `CLAUDE.md`, `REVIEW.md`, `.claude/**`, `.opencode/**`, `.codex/**`): kind docs, but sensitive, so high-risk (`.spiral-review.toml` is not docs, and sensitive too); the built-in sensitive globs must cover these directories.
 - A docs-only PR rewriting a `Made By: owner` row in `docs/decisions.md`: loop feature, so standard and `needsHuman`.
-- A diff that only appends `Made By: agent` rows to `docs/decisions.md` (the execution loop's own output): loop execution; the tier follows the execution rules. A formatter realigning the table doesn't count as an edit.
-- Accepted gap: an appended `Made By: agent` row may reverse an owner decision (a reversal is a new row naming the one it replaces); docs-only, it is trivial.
+- A diff that only appends to `docs/decisions.md` `Made By: agent` rows replacing no earlier row (the execution loop's own output): loop execution; the tier follows the execution rules. A formatter realigning the table doesn't count as an edit.
+- A diff that only appends a `Made By: agent` row replacing an earlier row (`Replaces: …` in **Reasoning**): loop feature, so standard and `needsHuman`.
 - An ADR written during execution: loop strategy (paths approximate the process loop; erring high is safe). Strategy content outside the default paths needs an added glob or an escalator.
 - A repo without the loop layout (e.g. a repo you only contribute to): defaults apply; everything not matched is execution.
 - Escalators configured only in user-level config for a repo you don't own (R13): they run the same way; the config source is named.
@@ -158,6 +158,7 @@ AC4–AC7 are post-MVP (escalators); the rest are MVP.
 - **AC7**: Given a diff that edits an escalator's script, when classified, then tier is high-risk with a sensitive-path reason.
 - **AC7b**: Given a docs-only diff in `docs/prd/`, when reviewed before PRD-002 lands, then no code reviewer runs on it and the digest says "docs: not reviewed".
 - **AC7c**: Given a diff that edits a row of `docs/decisions.md`, when classified, then loop is feature, tier standard and `needsHuman` true.
-- **AC7d**: Given a diff that only appends a `Made By: agent` row to `docs/decisions.md`, when classified, then loop is execution and the tier follows the execution rules.
+- **AC7d**: Given a diff that only appends a `Made By: agent` row without `Replaces:` to `docs/decisions.md`, when classified, then loop is execution and the tier follows the execution rules.
+- **AC7e**: Given a diff that only appends a `Made By: agent` row containing `Replaces:`, when classified, then loop is feature and `needsHuman` is true.
 - **AC8**: Given `spiral-review pr` on a PR, when it completes, then commit statuses `spiral-review/classification` and `spiral-review/verdict` exist on the head SHA.
 - **AC8b**: Given `pr` where the review fails open, when it completes, then `spiral-review/verdict` is `error` on the head SHA.
