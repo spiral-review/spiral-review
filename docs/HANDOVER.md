@@ -23,7 +23,8 @@ None.
 4. Plan 003 for the MVP **Change classifier** (PRD-001 MVP scope, ACs except AC4–AC7), then plan review, then execution. Thresholds, extra sensitive globs and skip globs come from `Config`; `.spiral-review.toml` and `LoadedConfig.instructionsPath` are sensitive paths; check the built-in sensitive globs cover `.claude/**`, `.opencode/**`, `.codex/**`; an `escalators` key stays a `ConfigError`.
 5. Plan and execute the MVP **Docs review** (PRD-002).
 6. Continue the ROADMAP MVP items in order: deterministic gates, `review` standard tier, Claude Code Stop hook, user-level config (needs the repo-level config decision), `init`, `pr` and `pr --create` (with the two commit statuses), `dismiss`.
-7. After the MVP: Escalators (ADR-004 for protocol v1 first), then the merge policy PRD once its prerequisites hold.
+7. After the MVP: review [ADR-004](adr/ADR-004_escalator-protocol.md) (escalator protocol v1, Proposed) against a concrete escalator (e.g. Jev); accept it (status Accepted, decision log row linking it, `Made By` owner) or revise; then build Escalators.
+8. Then the merge policy PRD once its prerequisites hold.
 
 ### PRD-002 creation prompt
 
@@ -35,7 +36,7 @@ After PRD-001 merges, in a fresh session:
 
 - General design, toolchain: [ADR-001](adr/ADR-001_general-design.md), [ADR-002](adr/ADR-002_toolchain.md).
 - Findings schema, blocking rule, no verification step (with its revisit trigger), `dismiss`, large diffs: [ADR-003](adr/ADR-003_findings-and-review-policy.md).
-- PRD-001: kind, loop and tier axes, loop globs, routing, escalator protocol direction, statuses, merge policy direction; sandboxing out of scope.
+- PRD-001: kind, loop and tier axes, loop globs, routing, escalator protocol direction (ADR-004 proposed), statuses, merge policy direction; sandboxing out of scope.
 - Risk tier rules, digest format, hook invocation, instructions file, `nit_cap` 5, `init` asks for the reviewer model: [decision log](decisions.md).
 - Lockfiles stay high-risk and stay out of the reviewer diff (PR #10).
 - Finding IDs exclude line and wording; collisions are accepted (ADR-003).

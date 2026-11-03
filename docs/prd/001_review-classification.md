@@ -138,7 +138,7 @@ Invalid config is a `ConfigError`, as today.
 ## Scope
 
 - MVP: classification (kind, loop, tier, `needsHuman`, reasons, config source), loop and docs globs, routing (docs "not reviewed" until PRD-002), statuses `classification` and `verdict` in `pr`. Until escalators ship, an `escalators` key is a `ConfigError` (strict validation).
-- After the MVP: escalators (protocol v1, function interface, `defineEscalator`; ADR-004 for the protocol before they ship), then the merge policy (own PRD).
+- After the MVP: escalators (protocol v1, function interface, `defineEscalator`; [ADR-004](../adr/ADR-004_escalator-protocol.md), proposed, accepted before they ship), then the merge policy (own PRD).
 
 ## Acceptance Criteria
 
