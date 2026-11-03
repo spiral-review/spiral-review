@@ -30,13 +30,13 @@ flowchart LR
 - **R1 - No new habits:** day to day you use only the agent and the PR page; `pr --create` replaces `gh pr create`.
 - **R2 - Findings never need a human relay:** they reach the coding agent through the integration or through command output it reads. Exception: only blocking findings are sent; the rest go to the digest (ADR-003 D3).
 - **R3 - Quiet when fine:** a passing review is one status line.
-- **R4 - Fast inner loop:** the per-turn hook runs only gates and the standard tier; the gauntlet runs only in `pr --create` / `review`.
+- **R4 - Fast per-turn review:** the per-turn hook runs only gates and the standard tier; the gauntlet runs only in `pr --create` / `review`.
 - **R5 - Agent-runnable commands:** machine-readable output, non-zero exit on blocking findings, results saved under `.spiral-review/`, never committed (R13).
-- **R6 - Bounded:** round caps end every loop; after the cap, the decision moves to the human via the digest.
+- **R6 - Bounded:** round caps end every review; after the cap, the decision moves to the human via the digest.
 - **R7 - Never fail closed:** reviewer errors, timeouts and budget degradation are reported in one line and in the digest; work is never blocked by spiral-review failing.
 - **R8 - No double spend:** results are cached by diff hash; re-running on an unchanged diff costs no quota.
 - **R9 - One digest per PR,** updated in place.
-- **R10 - Humans own every merge:** high-risk changes get the full review within budget without asking first. `needs-human` is added when the PR is high-risk, lists changes needing a human decision, or has unresolved findings (R6). It means "read the digest carefully", not "only these need a human". No auto-merge (see [Out of scope](#out-of-scope)).
+- **R10 - Humans own every merge:** high-risk changes get the full review within budget without asking first. `needs-human` is added when the PR is high-risk, touches feature- or strategy-loop docs ([PRD-001](prd/001_review-classification.md)), lists changes needing a human decision, or has unresolved findings (R6). It means "read the digest carefully", not "only these need a human". Exception: a repo whose owner opts into a merge policy (default off; see Auto-merge in [Later](#later)).
 - **R11 - Same flow on every coding agent** (Claude Code, OpenCode, Codex).
 - **R12 - Agent behavior is installed, not instructed:** the user never writes prompts or rules to make the agent follow this flow. `init` installs, per coding agent:
   - **Ship procedure:** run `spiral-review pr --create`; on non-zero exit, read the findings, fix each or reject it with `spiral-review dismiss <id> "<reason>"`, rerun; when the PR opens, report link and tier.
@@ -63,19 +63,21 @@ In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_gene
 - [x] **OpenCode adapter** (D2): reviewer adapter interface; OpenCode 2.x via its HTTP API, read-only on a best-effort basis (only `read` and `glob`, `.env` and symlinks denied), findings as zod-validated JSON ([plan 001](plans/001_opencode-adapter.md)).
 - [x] **MVP** · **Configuration** (D6): defaults < `~/.config/spiral-review` < `.spiral-review.toml` for structured settings (gate commands, nit cap, paths to skip); a per-repo instructions file, free text added to every reviewer prompt, like Anthropic's `REVIEW.md` ([source][anthropic-review]). MVP done without user-level config ([plan 002](plans/002_configuration.md)).
 - [ ] **MVP** · **Deterministic gates:** run the repo's lint, type check and tests before any LLM review; commands come from config.
-- [ ] **MVP** · **Risk tier classifier:** trivial / standard / high-risk from the diff. Deterministic rules set the minimum tier; optional escalators (e.g. a learned classifier) run after them and can only raise it, each with a reason saved with the results. Thresholds: [decision log](decisions.md).
+- [ ] **MVP** · **Change classifier** ([PRD-001](prd/001_review-classification.md)): kind (docs / code / mixed), loop (strategy / feature / execution) and tier (trivial / standard / high-risk) from the diff, plus `needs-human`; deterministic rules, each fired rule recorded. Thresholds: [decision log](decisions.md).
+- [ ] **MVP** · **Docs review** (PRD-002): reviews docs and the docs part of mixed changes, routed by the classification ([PRD-001](prd/001_review-classification.md)); docs are never sent to the code reviewer.
 - [ ] **MVP** · **`review`, standard tier:** one reviewer, one round, findings and verdict from the core ([ADR-003](adr/ADR-003_findings-and-review-policy.md)).
 - [ ] **MVP** · **Claude Code Stop hook** (D3, D4): thin adapter over the core; `hook` reviews uncommitted diff incl. untracked files; returns `{"decision":"block","reason":...}`; diff-hash guard, round cap, fail-open, verify-don't-obey instructions; sends only blocking findings (ADR-003 D3).
 - [ ] **MVP** · **User-level config** (D6, R13): `~/.config/spiral-review/config.toml` for personal settings and per-repo entries for repos without a `.spiral-review.toml`. Needs: [repo-level config](#open-questions) decided, then an ADR superseding D6.
 - [ ] **MVP** · **`init`** (north star 1, R12, R14): checks prerequisites (OpenCode, `gh`, auth, `spiral-review` on `PATH`), asks for the reviewer model (no built-in default) or takes it as a flag, writes it to user-level config, installs the coding-agent plugin (ship procedure, `gh pr create` guard, per-turn review); hook invocation in the [decision log](decisions.md).
-- [ ] **MVP** · **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, result cache; digest format in the [decision log](decisions.md).
+- [ ] **MVP** · **`pr` and `pr --create`** (D5, north star 3–5): branch review, PR creation, digest comment updated in place, `needs-human` label, commit statuses `spiral-review/classification` and `spiral-review/verdict` (PRD-001), result cache; digest format in the [decision log](decisions.md).
 - [ ] **MVP** · **`dismiss`** (ADR-003 D5): `spiral-review dismiss <id> "<reason>"` records a rejection per branch; dismissed IDs stop blocking and show as rejected in the digest.
+- [ ] **Escalators** (PRD-001): commands (protocol v1) or library functions that run after the rules and can only raise the tier or set `needs-human`, each with a reason; `defineEscalator` helper. Needs: a concrete escalator (see learned escalator); ADR-004 for protocol v1 before it ships.
 - [ ] **Reviewer evals:** a set of diffs with confirmed bugs (from past reverts and fixes); score every prompt, model or lens change against it before keeping it ([source][anthropic-review]). `stats` measures noise; this measures recall.
 - [ ] **Codex reviewer adapter** (D2): a second model family behind the `Reviewer` interface, e.g. a GPT reviewer for Claude Code users on a ChatGPT plan. `codex exec --output-schema` returns schema-checked JSON ([source][codex-exec]); a read-only sandbox may cover reviewer isolation for this backend. Needs: ChatGPT-plan terms for automated use; score it with reviewer evals.
 - [ ] **Gauntlet and consolidator:** lens fan-out, optionally on different models; consolidator merges, verifies, drops false positives.
 - [ ] **OpenCode plugin adapter** (D3, D4): spike first — verify a plugin can send findings into the active session on `session.idle`.
 - [ ] **Codex integration** (D3, D4): plugin with `PreToolUse` guard and `Stop` per-turn review. Spike first — hooks are behind a feature flag; verify `Stop` can block the turn and send findings to the agent.
-- [ ] **Reviewer isolation:** OpenCode permissions are not a sandbox (its threat model), so the read-only reviewer is best effort. Give reviewers no file tools (the diff plus files the core sends), or run OpenCode in a container or OS sandbox. Needed before reviewing untrusted PRs.
+- [ ] **Reviewer isolation:** OpenCode permissions are not a sandbox (its threat model), so the read-only reviewer is best effort. Give reviewers no file tools (the diff plus files the core sends). Containment is not spiral-review's job: see Sandboxing in [Out of scope](#out-of-scope).
 - [ ] **Budget ledger and degradation:** per-reviewer, per-task and global budgets; degrade instead of skipping. Needs: budget units, ledger concurrency, degradation order, shared quota.
 - [ ] **`stats` and reviewer metrics:** accept/reject rates per lens and model. Needs: accept/reject protocol.
 - [ ] **Single binary** (D1, optional): `bun build --compile`.
@@ -85,7 +87,7 @@ In order; each item is a small PR. D-numbers refer to [ADR-001](adr/ADR-001_gene
 First usable version, used daily on this repo. Items marked **MVP** above, reduced to:
 
 - configuration: built-in defaults, user-level config, `.spiral-review.toml` and the instructions file;
-- risk tiers: rules only, no escalators;
+- classification: rules only, no escalators;
 - standard tier only: high-risk changes get the standard review plus `needs-human`. Temporary exception to R10 and north star 3, until the gauntlet lands;
 - `init` and integration: Claude Code only. R11 is deferred, not dropped: the core stays agent-neutral (D7).
 
@@ -97,10 +99,7 @@ Decided: [ADR-003](adr/ADR-003_findings-and-review-policy.md) and the [decision 
 
 Not planned now; to be re-evaluated later.
 
-- **Auto-merge** (e.g. trivial PRs via GitHub auto-merge). Conflicts with "the human keeps the decisions". Re-evaluate once reviewer metrics show low-risk reviews are reliable and the risk classifier is proven; opt-in only. Prerequisites:
-  - tier and verdict as commit statuses on the head SHA: the `needs-human` label is not bound to a commit, and anyone with write access, including the coding agent, can remove it;
-  - the merge decision stays outside spiral-review, in a GitHub required status check;
-  - findings the coding agent dismissed itself (ADR-003 D5) block auto-merge until a consolidator or the human accepts the rejection.
+- **Sandboxing:** spiral-review runs gates, escalators and reviewers with the user's permissions; isolation comes from the environment the user runs it in (devcontainer, VM, the coding agent's sandbox). Reviewing untrusted PRs requires such an environment.
 
 ## Later
 
@@ -108,6 +107,7 @@ Follow-ups with a known trigger.
 
 - **TypeScript 7:** move from 6.0 once typescript-eslint supports it ([#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)).
 - **GitHub Action** wrapping the CLI (ADR-001 D5). Check OpenCode Go and Codex ChatGPT-plan terms first.
+- **Auto-merge** through an opt-in merge policy ([PRD-001](prd/001_review-classification.md), direction; own PRD). Triggers: reviewer metrics show low-risk reviews reliable; risk classifier proven; statuses posted by the GitHub Action or a GitHub App, which the coding agent can't impersonate (statuses posted with the user's `gh` token can be forged by it).
 
 ## Open questions
 
@@ -128,7 +128,7 @@ Undecided. Each one closes with an ADR or a [decision log](decisions.md) entry.
 - **Claude Code `/code-review`:** overlaps the review step (same-model, Claude quota, user-triggered). Compare against it in reviewer evals: spiral-review earns its keep only if a second model catches bugs it misses.
 - **Background and cloud agents:** the hook and `pr --create` run where the coding agent runs. A cloud session (e.g. Claude Code on the web) lacks the user-level plugin, OpenCode and the CLI, so it fails open and opens PRs with plain `gh pr create`: no review, no digest, no `needs-human`. PRs opened while the developer's machine is off wait too. Options: a `watch` mode on an always-on machine that reviews new PRs and pushes; the GitHub Action (Later). Either way a PR without a digest must read as unreviewed, not as clear.
 - **Same-model review:** enforce or warn when a reviewer uses the coding agent's model?
-- **Loop guards:** combine Claude Code's `stop_hook_active` input with the per-session round cap? Anthropic adds ([source][anthropic-review]): never repeat a finding already raised; after the first rounds, review only what changed since; in the last round before the cap, ask the author to reconsider the approach. At the cap, R6 applies.
+- **Round guards:** combine Claude Code's `stop_hook_active` input with the per-session round cap? Anthropic adds ([source][anthropic-review]): never repeat a finding already raised; after the first rounds, review only what changed since; in the last round before the cap, ask the author to reconsider the approach. At the cap, R6 applies.
 - **Outcome guardrail:** track reverts of reviewed changes, so fewer findings can't hide more escaped bugs (Anthropic's guardrail is revert and incident rates, [source][anthropic-review])?
 - **Subscription terms:** whether OpenCode Go and ChatGPT plans (Codex) allow automated use. OpenAI recommends API keys for CI and ChatGPT auth only on trusted runners ([source][codex-exec]); relevant before any CI.
 

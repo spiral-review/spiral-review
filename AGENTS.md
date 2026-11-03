@@ -21,3 +21,9 @@ Documentation guidelines: `/docs/documentation/README.md`
 - round: one blocking review and the coding agent's response; capped per session. Avoid: iteration.
 - digest: the single spiral-review PR comment. Avoid: summary, report.
 - integration: the per-coding-agent hooks or plugin calling the core. Avoid: plugin (that is the packaging).
+- round guards: the per-session limits on rounds (unchanged-diff skip, round cap). Avoid: loop guards.
+- classification: a diff's kind, loop, tier and needs-human, with reasons. Avoid: label, score.
+- kind: docs, code or mixed, from paths. Avoid: type, category (findings have categories).
+- loop: the development-process loop of a change (strategy, feature, execution), from paths. Avoid: stage, phase; the review cycle is a round.
+- escalator: a command or function that may only raise a classification. Avoid: classifier, check, hook.
+- merge policy: the owner's opt-in rules for merging a PR without a human. Avoid: auto-merge rule, merge gate (gates are lint, types, tests).
